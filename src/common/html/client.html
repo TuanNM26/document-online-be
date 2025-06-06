@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h2>Client đọc tài liệu</h2>
+    <script>
+      const socket = io('http://localhost:3000'); 
+
+      const documentId = '683d75fefc52722a2a781434'; 
+
+      socket.emit('join-document', documentId);
+
+      socket.on('page-change', (data) => {
+        console.log('Có thay đổi trang:', data);
+        alert(`Document ${data.documentId} vừa ${data.changeType} một trang!`);
+      });
+    </script>
+  </body>
+</html>

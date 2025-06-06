@@ -1,0 +1,1 @@
+{"version":3,"file":"allowedFileType.js","sourceRoot":"","sources":["../../../src/common/constant/allowedFileType.ts"],"names":[],"mappings":";;;AAAa,QAAA,iBAAiB,GAA6B;IACzD,GAAG,EAAE,CAAC,KAAK,EAAE,iBAAiB,CAAC;IAC/B,GAAG,EAAE,CAAC,KAAK,EAAE,YAAY,CAAC;IAC1B,KAAK,EAAE;QACL,KAAK;QACL,MAAM;QACN,0BAA0B;QAC1B,mEAAmE;KACpE;CACF,CAAC"}
