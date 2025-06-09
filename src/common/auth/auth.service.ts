@@ -40,6 +40,7 @@ export class AuthService {
       email: registerDto.email,
       username: registerDto.username,
       password: hashedPassword,
+      role: registerDto.role,
     });
 
     const savedUser = await createdUser.save();
@@ -50,22 +51,26 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.userModel.findOne({ email: dto.email });
+    const user = await this.userModel
+      .findOne({ email: dto.email })
+      .populate('role', 'roleName');
     if (!user) {
       throw new NotFoundException(MESSAGES.USER_NOT_FOUND);
     }
-
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException(MESSAGES.INVALID_DATA);
     }
-
     const payload = {
       sub: user._id,
       email: user.email,
       username: user.username,
+      role: {
+        id: (user.role as any)._id.toString(),
+        roleName: user.role.roleName,
+      },
     };
-
+    console.log(payload);
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '1d',
@@ -99,16 +104,19 @@ export class AuthService {
   }
 
   async refreshAccessToken(dto: RefreshTokenDto) {
-  const { refreshToken } = dto;
-  const payload = this.jwtService.verify(refreshToken, {
-    secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-  });
-  const accessToken = this.jwtService.sign(
-    { sub: payload.sub, username: payload.username },
-    { expiresIn: '15m', secret: this.configService.get<string>('JWT_SECRET'), },
-  );
-  return {
-    accessToken,
-  };
-}
+    const { refreshToken } = dto;
+    const payload = this.jwtService.verify(refreshToken, {
+      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+    });
+    const accessToken = this.jwtService.sign(
+      { sub: payload.sub, username: payload.username },
+      {
+        expiresIn: '15m',
+        secret: this.configService.get<string>('JWT_SECRET'),
+      },
+    );
+    return {
+      accessToken,
+    };
+  }
 }

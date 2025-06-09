@@ -20,6 +20,8 @@ const updateDocument_dto_1 = require("./dto/updateDocument.dto");
 const platform_express_1 = require("@nestjs/platform-express");
 const swagger_1 = require("@nestjs/swagger");
 const jwt_guard_1 = require("../../common/auth/strategy/jwt.guard");
+const role_guard_1 = require("../../common/auth/strategy/role.guard");
+const role_1 = require("../../common/decorator/role");
 let DocumentController = class DocumentController {
     documentService;
     constructor(documentService) {
@@ -54,7 +56,8 @@ exports.DocumentController = DocumentController;
 __decorate([
     (0, common_1.Post)(),
     (0, swagger_1.ApiBearerAuth)('access-token'),
-    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard, role_guard_1.RolesGuard),
+    (0, role_1.Roles)('admin'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new document' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
@@ -102,6 +105,7 @@ __decorate([
 ], DocumentController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, swagger_1.ApiOperation)({ summary: 'Update a document by ID' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
@@ -128,6 +132,7 @@ __decorate([
 ], DocumentController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiOperation)({ summary: 'Delete a document by ID' }),
     (0, swagger_1.ApiParam)({ name: 'id', required: true, description: 'Document ID' }),
     __param(0, (0, common_1.Param)('id')),

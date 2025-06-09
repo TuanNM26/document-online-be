@@ -108,6 +108,7 @@ let DocumentService = class DocumentService {
         }));
         await this.pageModel.insertMany(pages);
         const savedDoc = await newDoc.save();
+        await savedDoc.populate('userId', 'username');
         return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, savedDoc.toObject(), {
             excludeExtraneousValues: true,
         });
@@ -122,9 +123,11 @@ let DocumentService = class DocumentService {
                 ],
             }
             : {};
-        const result = await (0, pagination_interface_1.paginate)(this.documentModel, page, limit, filter, {
-            createdAt: -1,
-        });
+        const populate = {
+            path: 'userId',
+            select: 'username',
+        };
+        const result = await (0, pagination_interface_1.paginate)(this.documentModel, page, limit, filter, { createdAt: -1 }, populate);
         return {
             ...result,
             data: (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, result.data, {
@@ -133,7 +136,7 @@ let DocumentService = class DocumentService {
         };
     }
     async findById(id) {
-        const doc = await this.documentModel.findById(id);
+        const doc = await this.documentModel.findById(id).populate('userId', 'username');
         if (!doc) {
             throw new common_1.NotFoundException(`Document with id ${id} not found`);
         }

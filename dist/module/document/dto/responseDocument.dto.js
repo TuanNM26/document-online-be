@@ -16,6 +16,7 @@ let ResponseDocumentDto = class ResponseDocumentDto {
     title;
     field;
     userId;
+    username;
     filePath;
     fileType;
     totalPages;
@@ -36,8 +37,14 @@ __decorate([
 ], ResponseDocumentDto.prototype, "field", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Transform)(({ obj }) => obj.userId?._id.toString()),
     __metadata("design:type", String)
 ], ResponseDocumentDto.prototype, "userId", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Transform)(({ obj }) => obj.userId?.username),
+    __metadata("design:type", String)
+], ResponseDocumentDto.prototype, "username", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)

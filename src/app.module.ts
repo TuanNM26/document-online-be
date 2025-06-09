@@ -7,6 +7,7 @@ import { PageModule } from './module/page/page.module';
 import { BookmarkModule } from './module/bookmark/bookmark.module';
 import { UserModule } from './module/user/user.module';
 import { AuthModule } from './common/auth/auth.module';
+import { RoleModule } from './module/role/role.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AuthModule } from './common/auth/auth.module';
     }),
     DocumentModule,
     PageModule,
+    RoleModule,
     BookmarkModule,
     UserModule,
     AuthModule,

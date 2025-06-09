@@ -80,7 +80,7 @@ export class DocumentService {
     await this.pageModel.insertMany(pages);
 
     const savedDoc = await newDoc.save();
-
+    await savedDoc.populate('userId', 'username');
     return plainToInstance(ResponseDocumentDto, savedDoc.toObject(), {
       excludeExtraneousValues: true,
     });
@@ -101,9 +101,12 @@ export class DocumentService {
         }
       : {};
 
-    const result = await paginate(this.documentModel, page, limit, filter, {
-      createdAt: -1,
-    });
+      const populate = {
+    path: 'userId', 
+    select: 'username',
+    };
+
+    const result = await paginate(this.documentModel, page, limit, filter, {createdAt: -1}, populate);
 
     return {
       ...result,
@@ -114,7 +117,7 @@ export class DocumentService {
   }
 
   async findById(id: string): Promise<ResponseDocumentDto> {
-    const doc = await this.documentModel.findById(id);
+    const doc = await this.documentModel.findById(id).populate('userId', 'username');
     if (!doc) {
       throw new NotFoundException(`Document with id ${id} not found`);
     }

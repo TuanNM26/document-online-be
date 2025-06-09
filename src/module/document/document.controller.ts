@@ -26,6 +26,8 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/auth/strategy/jwt.guard';
+import { RolesGuard } from '../../common/auth/strategy/role.guard';
+import { Roles } from '../../common/decorator/role';
 
 @ApiTags('Documents')
 @Controller('documents')
@@ -34,7 +36,8 @@ export class DocumentController {
 
   @Post()
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Create a new document' })
   @ApiConsumes('multipart/form-data')
@@ -89,6 +92,7 @@ export class DocumentController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Update a document by ID' })
   @ApiConsumes('multipart/form-data')
@@ -115,6 +119,7 @@ export class DocumentController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Delete a document by ID' })
   @ApiParam({ name: 'id', required: true, description: 'Document ID' })
   remove(@Param('id') id: string) {

@@ -3,6 +3,7 @@ export declare class ResponseDocumentDto {
     title: string;
     field?: string;
     userId?: string;
+    username?: string;
     filePath: string;
     fileType: string;
     totalPages: number;

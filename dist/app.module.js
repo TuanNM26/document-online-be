@@ -15,6 +15,7 @@ const page_module_1 = require("./module/page/page.module");
 const bookmark_module_1 = require("./module/bookmark/bookmark.module");
 const user_module_1 = require("./module/user/user.module");
 const auth_module_1 = require("./common/auth/auth.module");
+const role_module_1 = require("./module/role/role.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -32,6 +33,7 @@ exports.AppModule = AppModule = __decorate([
             }),
             document_module_1.DocumentModule,
             page_module_1.PageModule,
+            role_module_1.RoleModule,
             bookmark_module_1.BookmarkModule,
             user_module_1.UserModule,
             auth_module_1.AuthModule,

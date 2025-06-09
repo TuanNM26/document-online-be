@@ -47,6 +47,7 @@ let AuthService = class AuthService {
             email: registerDto.email,
             username: registerDto.username,
             password: hashedPassword,
+            role: registerDto.role,
         });
         const savedUser = await createdUser.save();
         return (0, class_transformer_1.plainToInstance)(responseUser_dto_1.UserResponseDto, savedUser.toObject(), {
@@ -54,7 +55,9 @@ let AuthService = class AuthService {
         });
     }
     async login(dto) {
-        const user = await this.userModel.findOne({ email: dto.email });
+        const user = await this.userModel
+            .findOne({ email: dto.email })
+            .populate('role', 'roleName');
         if (!user) {
             throw new common_1.NotFoundException(message_1.MESSAGES.USER_NOT_FOUND);
         }
@@ -66,7 +69,12 @@ let AuthService = class AuthService {
             sub: user._id,
             email: user.email,
             username: user.username,
+            role: {
+                id: user.role._id.toString(),
+                roleName: user.role.roleName,
+            },
         };
+        console.log(payload);
         const accessToken = await this.jwtService.signAsync(payload, {
             secret: this.configService.get('JWT_SECRET'),
             expiresIn: this.configService.get('JWT_EXPIRES_IN') || '1d',
@@ -95,7 +103,10 @@ let AuthService = class AuthService {
         const payload = this.jwtService.verify(refreshToken, {
             secret: this.configService.get('JWT_REFRESH_SECRET'),
         });
-        const accessToken = this.jwtService.sign({ sub: payload.sub, username: payload.username }, { expiresIn: '15m', secret: this.configService.get('JWT_SECRET'), });
+        const accessToken = this.jwtService.sign({ sub: payload.sub, username: payload.username }, {
+            expiresIn: '15m',
+            secret: this.configService.get('JWT_SECRET'),
+        });
         return {
             accessToken,
         };

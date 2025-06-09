@@ -12,7 +12,12 @@ export class ResponseDocumentDto {
   field?: string;
 
   @Expose()
+  @Transform(({ obj }) => obj.userId?._id.toString())
   userId?: string;
+
+  @Expose()
+  @Transform(({ obj }) => obj.userId?.username)
+  username?: string;
 
   @Expose()
   filePath: string;
