@@ -57,7 +57,7 @@ __decorate([
     (0, common_1.Post)(),
     (0, swagger_1.ApiBearerAuth)('access-token'),
     (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard, role_guard_1.RolesGuard),
-    (0, role_1.Roles)('admin'),
+    (0, role_1.Roles)('user'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new document' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),

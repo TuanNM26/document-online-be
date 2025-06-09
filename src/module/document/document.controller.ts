@@ -37,7 +37,7 @@ export class DocumentController {
   @Post()
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('user')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Create a new document' })
   @ApiConsumes('multipart/form-data')
@@ -55,17 +55,17 @@ export class DocumentController {
     },
   })
   createDocument(
-  @Body() body: CreateDocumentDto,
-  @UploadedFile() file: Express.Multer.File,
-  @Req() req: any,
-) {
-  const userId = req.user.id;
-  return this.documentService.create({
-    ...body,
-    file,
-    userId,
-  });
-}
+    @Body() body: CreateDocumentDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    const userId = req.user.id;
+    return this.documentService.create({
+      ...body,
+      file,
+      userId,
+    });
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get a list of documents' })

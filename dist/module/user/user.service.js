@@ -26,7 +26,11 @@ let UserService = class UserService {
         this.userModel = userModel;
     }
     async findAll(page = 1, limit = 10) {
-        const result = await (0, pagination_interface_1.paginate)(this.userModel, page, limit, {}, { createdAt: -1 });
+        const populate = {
+            path: 'role',
+            select: 'roleName',
+        };
+        const result = await (0, pagination_interface_1.paginate)(this.userModel, page, limit, {}, { createdAt: -1 }, populate);
         const users = result.data;
         return {
             ...result,
@@ -36,7 +40,10 @@ let UserService = class UserService {
         };
     }
     async findById(id) {
-        const user = await this.userModel.findById(id).exec();
+        const user = await this.userModel
+            .findById(id)
+            .populate('role', 'roleName')
+            .exec();
         if (!user) {
             throw new common_1.NotFoundException(`User with id ${id} not found`);
         }

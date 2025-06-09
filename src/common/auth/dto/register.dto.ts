@@ -22,7 +22,7 @@ export class RegisterDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: 'admin', description: 'vai trò' })
+  @ApiProperty({ description: 'Id of role' })
   @IsString()
-  role?: string;
+  roleId?: string;
 }

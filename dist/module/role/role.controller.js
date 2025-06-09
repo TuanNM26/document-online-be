@@ -25,10 +25,10 @@ let RoleController = class RoleController {
     create(createRoleDto) {
         return this.roleService.create(createRoleDto);
     }
-    findAll() {
+    async getAllRoles() {
         return this.roleService.findAll();
     }
-    findOne(id) {
+    async getRole(id) {
         return this.roleService.findOne(id);
     }
     update(id, updateRoleDto) {
@@ -48,17 +48,19 @@ __decorate([
 ], RoleController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, common_1.UseInterceptors)(common_1.ClassSerializerInterceptor),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], RoleController.prototype, "findAll", null);
+    __metadata("design:returntype", Promise)
+], RoleController.prototype, "getAllRoles", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, common_1.UseInterceptors)(common_1.ClassSerializerInterceptor),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], RoleController.prototype, "findOne", null);
+    __metadata("design:returntype", Promise)
+], RoleController.prototype, "getRole", null);
 __decorate([
     (0, common_1.Put)(':id'),
     __param(0, (0, common_1.Param)('id')),

@@ -17,6 +17,8 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const role_schema_1 = require("./role.schema");
+const class_transformer_1 = require("class-transformer");
+const responeRole_dto_1 = require("./dto/responeRole.dto");
 let RoleService = class RoleService {
     roleModel;
     constructor(roleModel) {
@@ -27,14 +29,23 @@ let RoleService = class RoleService {
         return createdRole.save();
     }
     async findAll() {
-        return this.roleModel.find().exec();
+        const roles = await this.roleModel.find().exec();
+        return (0, class_transformer_1.plainToInstance)(responeRole_dto_1.ResponseRoleDto, roles.map((role) => ({
+            id: role.id.toString(),
+            roleName: role.roleName,
+            description: role.description,
+        })));
     }
     async findOne(id) {
         const role = await this.roleModel.findById(id).exec();
         if (!role) {
             throw new common_1.NotFoundException(`Role with id ${id} not found`);
         }
-        return role;
+        return (0, class_transformer_1.plainToInstance)(responeRole_dto_1.ResponseRoleDto, {
+            id: role.id.toString(),
+            roleName: role.roleName,
+            description: role.description,
+        });
     }
     async update(id, updateRoleDto) {
         const updatedRole = await this.roleModel

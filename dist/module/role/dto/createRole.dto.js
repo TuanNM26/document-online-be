@@ -14,7 +14,6 @@ const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 class CreateRoleDto {
     roleName;
-    permissions;
     description;
 }
 exports.CreateRoleDto = CreateRoleDto;
@@ -26,16 +25,6 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateRoleDto.prototype, "roleName", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({
-        description: 'Array of permissions assigned to the role',
-        type: [String],
-        example: ['create_user', 'delete_document'],
-    }),
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.IsString)({ each: true }),
-    __metadata("design:type", Array)
-], CreateRoleDto.prototype, "permissions", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({
         description: 'Description of the role',

@@ -19,12 +19,17 @@ export class UserService {
     page = 1,
     limit = 10,
   ): Promise<PaginationResult<UserResponseDto>> {
+    const populate = {
+      path: 'role',
+      select: 'roleName',
+    };
     const result = await paginate<User>(
       this.userModel,
       page,
       limit,
       {},
       { createdAt: -1 },
+      populate,
     );
 
     const users = result.data;
@@ -38,7 +43,10 @@ export class UserService {
   }
 
   async findById(id: string): Promise<UserResponseDto> {
-    const user = await this.userModel.findById(id).exec();
+    const user = await this.userModel
+      .findById(id)
+      .populate('role', 'roleName')
+      .exec();
 
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);

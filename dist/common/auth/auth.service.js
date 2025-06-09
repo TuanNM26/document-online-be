@@ -47,7 +47,7 @@ let AuthService = class AuthService {
             email: registerDto.email,
             username: registerDto.username,
             password: hashedPassword,
-            role: registerDto.role,
+            role: registerDto.roleId,
         });
         const savedUser = await createdUser.save();
         return (0, class_transformer_1.plainToInstance)(responseUser_dto_1.UserResponseDto, savedUser.toObject(), {

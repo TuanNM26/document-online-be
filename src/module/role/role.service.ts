@@ -4,6 +4,8 @@ import { Model } from 'mongoose';
 import { Role } from './role.schema';
 import { CreateRoleDto } from './dto/createRole.dto';
 import { UpdateRoleDto } from './dto/updateRole.dto';
+import { plainToInstance } from 'class-transformer';
+import { ResponseRoleDto } from './dto/responeRole.dto';
 
 @Injectable()
 export class RoleService {
@@ -14,16 +16,28 @@ export class RoleService {
     return createdRole.save();
   }
 
-  async findAll(): Promise<Role[]> {
-    return this.roleModel.find().exec();
+  async findAll(): Promise<ResponseRoleDto[]> {
+    const roles = await this.roleModel.find().exec();
+    return plainToInstance(
+      ResponseRoleDto,
+      roles.map((role) => ({
+        id: role.id.toString(),
+        roleName: role.roleName,
+        description: role.description,
+      })),
+    );
   }
 
-  async findOne(id: string): Promise<Role> {
+  async findOne(id: string): Promise<ResponseRoleDto> {
     const role = await this.roleModel.findById(id).exec();
     if (!role) {
       throw new NotFoundException(`Role with id ${id} not found`);
     }
-    return role;
+    return plainToInstance(ResponseRoleDto, {
+      id: role.id.toString(),
+      roleName: role.roleName,
+      description: role.description,
+    });
   }
 
   async update(id: string, updateRoleDto: UpdateRoleDto): Promise<Role> {

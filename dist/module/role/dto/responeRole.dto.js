@@ -9,47 +9,24 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UserResponseDto = void 0;
+exports.ResponseRoleDto = void 0;
 const class_transformer_1 = require("class-transformer");
-class RoleDto {
+class ResponseRoleDto {
     id;
     roleName;
+    description;
 }
-__decorate([
-    (0, class_transformer_1.Expose)({ name: '_id' }),
-    (0, class_transformer_1.Transform)(({ obj }) => obj._id?.toString()),
-    __metadata("design:type", String)
-], RoleDto.prototype, "id", void 0);
+exports.ResponseRoleDto = ResponseRoleDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)
-], RoleDto.prototype, "roleName", void 0);
-let UserResponseDto = class UserResponseDto {
-    id;
-    username;
-    email;
-    role;
-};
-exports.UserResponseDto = UserResponseDto;
-__decorate([
-    (0, class_transformer_1.Expose)({ name: '_id' }),
-    (0, class_transformer_1.Transform)(({ obj }) => obj._id.toString()),
-    __metadata("design:type", String)
-], UserResponseDto.prototype, "id", void 0);
+], ResponseRoleDto.prototype, "id", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)
-], UserResponseDto.prototype, "username", void 0);
+], ResponseRoleDto.prototype, "roleName", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)
-], UserResponseDto.prototype, "email", void 0);
-__decorate([
-    (0, class_transformer_1.Expose)(),
-    (0, class_transformer_1.Type)(() => RoleDto),
-    __metadata("design:type", RoleDto)
-], UserResponseDto.prototype, "role", void 0);
-exports.UserResponseDto = UserResponseDto = __decorate([
-    (0, class_transformer_1.Exclude)()
-], UserResponseDto);
-//# sourceMappingURL=responseUser.dto.js.map
+], ResponseRoleDto.prototype, "description", void 0);
+//# sourceMappingURL=responeRole.dto.js.map

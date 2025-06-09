@@ -15,6 +15,7 @@ const swagger_1 = require("@nestjs/swagger");
 class updateUserDto {
     email;
     username;
+    role;
 }
 exports.updateUserDto = updateUserDto;
 __decorate([
@@ -30,4 +31,9 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], updateUserDto.prototype, "username", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Id of role' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], updateUserDto.prototype, "role", void 0);
 //# sourceMappingURL=updateUser.dto.js.map

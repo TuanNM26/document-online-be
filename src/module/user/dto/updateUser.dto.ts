@@ -12,4 +12,8 @@ export class updateUserDto {
   @ApiProperty({ example: 'johndoe', description: 'Tên người dùng' })
   @IsString()
   username: string;
+
+  @ApiProperty({ description: 'Id of role' })
+  @IsString()
+  role?: string;
 }

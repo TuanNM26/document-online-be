@@ -7,6 +7,7 @@ import {
   Delete,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './user.schema';
@@ -22,6 +23,9 @@ import { CreateUserDto } from './dto/createUser.dto';
 import { updateUserDto } from './dto/updateUser.dto';
 import { UserResponseDto } from './dto/responseUser.dto';
 import { PaginationResult } from 'src/common/interface/pagination.interface';
+import { JwtAuthGuard } from 'src/common/auth/strategy/jwt.guard';
+import { RolesGuard } from 'src/common/auth/strategy/role.guard';
+import { Roles } from 'src/common/decorator/role';
 
 @ApiTags('Users')
 @Controller('users')
@@ -46,7 +50,7 @@ export class UserController {
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'User retrieved successfully' })
-  async getUserById(@Param('id') id: string): Promise<Partial<User>> {
+  async getUserById(@Param('id') id: string): Promise<UserResponseDto> {
     return this.userService.findById(id);
   }
 

@@ -1,1 +1,1 @@
-{"version":3,"file":"updateRole.dto.js","sourceRoot":"","sources":["../../../../src/module/role/dto/updateRole.dto.ts"],"names":[],"mappings":";;;AAAA,uDAAmD;AACnD,qDAAiD;AAEjD,MAAa,aAAc,SAAQ,IAAA,0BAAW,EAAC,8BAAa,CAAC;CAAG;AAAhE,sCAAgE"}
+{"version":3,"file":"updateRole.dto.js","sourceRoot":"","sources":["../../../../src/module/role/dto/updateRole.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;AAEA,6CAA8C;AAC9C,qDAA2C;AAE3C,MAAa,aAAa;IAMxB,QAAQ,CAAS;CAClB;AAPD,sCAOC;AADC;IALC,IAAA,qBAAW,EAAC;QACX,WAAW,EAAE,yBAAyB;QACtC,OAAO,EAAE,OAAO;KACjB,CAAC;IACD,IAAA,0BAAQ,GAAE;;+CACM"}

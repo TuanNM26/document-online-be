@@ -14,7 +14,6 @@ const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 let Role = class Role extends mongoose_2.Document {
     roleName;
-    permissions;
     description;
 };
 exports.Role = Role;
@@ -22,10 +21,6 @@ __decorate([
     (0, mongoose_1.Prop)({ required: true, unique: true }),
     __metadata("design:type", String)
 ], Role.prototype, "roleName", void 0);
-__decorate([
-    (0, mongoose_1.Prop)({ type: [String], required: true, default: [] }),
-    __metadata("design:type", Array)
-], Role.prototype, "permissions", void 0);
 __decorate([
     (0, mongoose_1.Prop)(),
     __metadata("design:type", String)

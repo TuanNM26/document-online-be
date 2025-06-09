@@ -16,6 +16,7 @@ class CreateUserDto {
     email;
     username;
     password;
+    roleId;
 }
 exports.CreateUserDto = CreateUserDto;
 __decorate([
@@ -41,4 +42,9 @@ __decorate([
     (0, class_validator_1.MinLength)(6),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "password", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Id of role' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateUserDto.prototype, "roleId", void 0);
 //# sourceMappingURL=createUser.dto.js.map

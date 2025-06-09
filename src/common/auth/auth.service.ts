@@ -40,7 +40,7 @@ export class AuthService {
       email: registerDto.email,
       username: registerDto.username,
       password: hashedPassword,
-      role: registerDto.role,
+      role: registerDto.roleId,
     });
 
     const savedUser = await createdUser.save();

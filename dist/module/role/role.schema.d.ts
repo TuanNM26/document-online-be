@@ -1,7 +1,6 @@
 import { Document } from 'mongoose';
 export declare class Role extends Document {
     roleName: string;
-    permissions: string[];
     description?: string;
 }
 export declare const RoleSchema: import("mongoose").Schema<Role, import("mongoose").Model<Role, any, any, any, Document<unknown, any, Role, any> & Role & Required<{
