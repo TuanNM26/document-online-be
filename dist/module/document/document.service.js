@@ -259,19 +259,37 @@ let DocumentService = class DocumentService {
             const pages = await this.pageModel.find({ documentId: document._id });
             for (const page of pages) {
                 if (page.filePath) {
-                    const pageFileName = page.filePath.split('/').slice(-1)[0];
-                    await supabase_1.supabase.storage
-                        .from('doconline')
-                        .remove([`documents/${document._id}/pages/${pageFileName}`]);
+                    try {
+                        const pageFileName = page.filePath.split('/').slice(-1)[0];
+                        const { error: removePageError } = await supabase_1.supabase.storage
+                            .from('doconline')
+                            .remove([`documents/${document._id}/pages/${pageFileName}`]);
+                        if (removePageError) {
+                            console.warn(`Cảnh báo: Không thể xóa trang cũ ${pageFileName} khỏi Supabase: ${removePageError.message}`);
+                        }
+                    }
+                    catch (e) {
+                        console.error(`Lỗi khi cố gắng xóa trang Supabase: ${page.filePath}`, e);
+                    }
                 }
             }
             await this.pageModel.deleteMany({ documentId: document._id });
+            console.log(`Đã xóa tất cả các trang cũ cho document ID: ${document._id}`);
             if (document.filePath) {
-                const oldFileName = document.filePath.split('/').slice(-1)[0];
-                await supabase_1.supabase.storage
-                    .from('doconline')
-                    .remove([`documents/${oldFileName}`]);
+                try {
+                    const oldFileBucketPath = document.filePath.substring(document.filePath.indexOf('documents/'));
+                    const { error: removeOldFileError } = await supabase_1.supabase.storage
+                        .from('doconline')
+                        .remove([oldFileBucketPath]);
+                    if (removeOldFileError) {
+                        console.warn(`Cảnh báo: Không thể xóa file gốc cũ ${oldFileBucketPath} khỏi Supabase: ${removeOldFileError.message}`);
+                    }
+                }
+                catch (e) {
+                    console.error(`Lỗi khi cố gắng xóa file gốc cũ Supabase: ${document.filePath}`, e);
+                }
             }
+            console.log(`Đã xóa file gốc cũ cho document ID: ${document._id}`);
             const originalFileName = `documents/document-${id}-${(0, uuid_1.v4)()}.${fileExt}`;
             const { error: uploadError } = await supabase_1.supabase.storage
                 .from('doconline')
@@ -281,14 +299,14 @@ let DocumentService = class DocumentService {
                 upsert: false,
             });
             if (uploadError) {
-                throw new common_1.BadRequestException(`Upload file gốc thất bại: ${uploadError.message}`);
+                throw new common_1.BadRequestException(`Upload file gốc mới thất bại: ${uploadError.message}`);
             }
             const { data: originalUrlData } = supabase_1.supabase.storage
                 .from('doconline')
                 .getPublicUrl(originalFileName);
             if (!originalUrlData?.publicUrl ||
                 typeof originalUrlData.publicUrl !== 'string') {
-                throw new common_1.BadRequestException('Không thể lấy URL file gốc.');
+                throw new common_1.BadRequestException('Không thể lấy URL file gốc mới.');
             }
             document.filePath = originalUrlData.publicUrl;
             document.fileType = fileExt;
@@ -310,7 +328,7 @@ let DocumentService = class DocumentService {
                         upsert: false,
                     });
                     if (error) {
-                        throw new common_1.BadRequestException(`Upload trang ${i + 1} thất bại: ${error.message}`);
+                        throw new common_1.BadRequestException(`Upload trang PDF ${i + 1} thất bại: ${error.message}`);
                     }
                     const { data: urlData } = supabase_1.supabase.storage
                         .from('doconline')
@@ -326,28 +344,13 @@ let DocumentService = class DocumentService {
             }
             else if (fileExt === 'txt') {
                 const text = file.buffer.toString('utf-8').trim();
-                const charsPerPage = 1000;
+                const charsPerPage = 2000;
                 const totalChunks = Math.ceil(text.length / charsPerPage);
                 for (let i = 0; i < totalChunks; i++) {
-                    const chunkText = text.slice(i * charsPerPage, (i + 1) * charsPerPage);
-                    const pageFileName = `documents/${document._id}/pages/page_${i + 1}.txt`;
-                    const { error } = await supabase_1.supabase.storage
-                        .from('doconline')
-                        .upload(pageFileName, Buffer.from(chunkText), {
-                        contentType: 'text/plain',
-                        cacheControl: '3600',
-                        upsert: false,
-                    });
-                    if (error) {
-                        throw new common_1.BadRequestException(`Upload trang văn bản ${i + 1} thất bại: ${error.message}`);
-                    }
-                    const { data: urlData } = supabase_1.supabase.storage
-                        .from('doconline')
-                        .getPublicUrl(pageFileName);
                     newPages.push({
                         documentId: document._id,
                         pageNumber: i + 1,
-                        filePath: urlData.publicUrl,
+                        filePath: document.filePath,
                         fileType: 'txt',
                     });
                 }
@@ -377,19 +380,20 @@ let DocumentService = class DocumentService {
                         documentId: document._id,
                         pageNumber: i + 1,
                         filePath: urlData.publicUrl,
-                        fileType: 'xlsx',
+                        fileType: 'csv',
                     });
                 }
                 document.totalPages = sheetNames.length;
             }
-            await this.pageModel.insertMany(newPages);
+            if (newPages.length > 0) {
+                await this.pageModel.insertMany(newPages);
+            }
         }
         Object.assign(document, dto);
         if (userId) {
             document.userId = new mongoose_2.Types.ObjectId(userId);
         }
         const saved = await document.save();
-        await saved.populate('userId', 'username');
         return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, saved.toObject(), {
             excludeExtraneousValues: true,
         });
