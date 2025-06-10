@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Document, DocumentDocument } from './document.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as XLSX from 'xlsx';
 import { supabase } from 'src/common/storage/supabase';
 import { v4 as uuidv4 } from 'uuid';
@@ -35,7 +35,7 @@ export class DocumentService {
     title: string;
     field: string;
     file: Express.Multer.File;
-    userId:string
+    userId: string;
   }): Promise<ResponseDocumentDto> {
     const { file, ...docInfo } = data;
 
@@ -101,12 +101,19 @@ export class DocumentService {
         }
       : {};
 
-      const populate = {
-    path: 'userId', 
-    select: 'username',
+    const populate = {
+      path: 'userId',
+      select: 'username',
     };
 
-    const result = await paginate(this.documentModel, page, limit, filter, {createdAt: -1}, populate);
+    const result = await paginate(
+      this.documentModel,
+      page,
+      limit,
+      filter,
+      { createdAt: -1 },
+      populate,
+    );
 
     return {
       ...result,
@@ -117,7 +124,9 @@ export class DocumentService {
   }
 
   async findById(id: string): Promise<ResponseDocumentDto> {
-    const doc = await this.documentModel.findById(id).populate('userId', 'username');
+    const doc = await this.documentModel
+      .findById(id)
+      .populate('userId', 'username');
     if (!doc) {
       throw new NotFoundException(`Document with id ${id} not found`);
     }
@@ -130,6 +139,7 @@ export class DocumentService {
     id: string,
     dto: UpdateDocumentDto,
     file?: Express.Multer.File,
+    userId?: string,
   ): Promise<ResponseDocumentDto> {
     const document = await this.documentModel.findById(id);
     if (!document) {
@@ -198,6 +208,9 @@ export class DocumentService {
     }
 
     Object.assign(document, dto);
+    if (userId) {
+      document.userId = new Types.ObjectId(userId);
+    }
     const saved = document.save();
     return plainToInstance(ResponseDocumentDto, saved, {
       excludeExtraneousValues: true,

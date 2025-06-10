@@ -136,7 +136,9 @@ let DocumentService = class DocumentService {
         };
     }
     async findById(id) {
-        const doc = await this.documentModel.findById(id).populate('userId', 'username');
+        const doc = await this.documentModel
+            .findById(id)
+            .populate('userId', 'username');
         if (!doc) {
             throw new common_1.NotFoundException(`Document with id ${id} not found`);
         }
@@ -144,7 +146,7 @@ let DocumentService = class DocumentService {
             excludeExtraneousValues: true,
         });
     }
-    async update(id, dto, file) {
+    async update(id, dto, file, userId) {
         const document = await this.documentModel.findById(id);
         if (!document) {
             throw new common_1.NotFoundException(message_1.MESSAGES.DOCUMENT_NOT_FOUND);
@@ -200,6 +202,9 @@ let DocumentService = class DocumentService {
             await this.pageModel.insertMany(newPages);
         }
         Object.assign(document, dto);
+        if (userId) {
+            document.userId = new mongoose_2.Types.ObjectId(userId);
+        }
         const saved = document.save();
         return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, saved, {
             excludeExtraneousValues: true,

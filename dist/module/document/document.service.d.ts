@@ -18,7 +18,7 @@ export declare class DocumentService {
     }): Promise<ResponseDocumentDto>;
     findAll(page?: number, limit?: number, searchQuery?: string): Promise<PaginationResult<ResponseDocumentDto>>;
     findById(id: string): Promise<ResponseDocumentDto>;
-    update(id: string, dto: UpdateDocumentDto, file?: Express.Multer.File): Promise<ResponseDocumentDto>;
+    update(id: string, dto: UpdateDocumentDto, file?: Express.Multer.File, userId?: string): Promise<ResponseDocumentDto>;
     delete(id: string): Promise<void>;
     analyzeFile(file: Express.Multer.File): Promise<number>;
 }

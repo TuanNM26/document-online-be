@@ -45,8 +45,9 @@ let DocumentController = class DocumentController {
     findOne(id) {
         return this.documentService.findById(id);
     }
-    async update(id, dto, file) {
-        return this.documentService.update(id, dto, file);
+    async update(id, dto, req, file) {
+        const userId = req.user.id;
+        return this.documentService.update(id, dto, file, userId);
     }
     remove(id) {
         return this.documentService.delete(id);
@@ -57,7 +58,7 @@ __decorate([
     (0, common_1.Post)(),
     (0, swagger_1.ApiBearerAuth)('access-token'),
     (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard, role_guard_1.RolesGuard),
-    (0, role_1.Roles)('user'),
+    (0, role_1.Roles)('admin'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new document' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
@@ -105,7 +106,8 @@ __decorate([
 ], DocumentController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
-    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard, role_guard_1.RolesGuard),
+    (0, role_1.Roles)('admin'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, swagger_1.ApiOperation)({ summary: 'Update a document by ID' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
@@ -125,9 +127,10 @@ __decorate([
     }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
-    __param(2, (0, common_1.UploadedFile)()),
+    __param(2, (0, common_1.Req)()),
+    __param(3, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, updateDocument_dto_1.UpdateDocumentDto, Object]),
+    __metadata("design:paramtypes", [String, updateDocument_dto_1.UpdateDocumentDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], DocumentController.prototype, "update", null);
 __decorate([

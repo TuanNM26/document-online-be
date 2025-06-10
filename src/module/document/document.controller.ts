@@ -37,7 +37,7 @@ export class DocumentController {
   @Post()
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('user')
+  @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Create a new document' })
   @ApiConsumes('multipart/form-data')
@@ -92,7 +92,8 @@ export class DocumentController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Update a document by ID' })
   @ApiConsumes('multipart/form-data')
@@ -113,9 +114,11 @@ export class DocumentController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateDocumentDto,
+    @Req() req: any,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.documentService.update(id, dto, file);
+    const userId = req.user.id;
+    return this.documentService.update(id, dto, file, userId);
   }
 
   @Delete(':id')
