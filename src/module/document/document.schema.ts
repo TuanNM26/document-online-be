@@ -9,7 +9,7 @@ export class Document {
   @Prop()
   field: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ unique: true })
   filePath: string;
 
   @Prop()

@@ -63,6 +63,8 @@ const message_1 = require("../../common/constant/message");
 const responseDocument_dto_1 = require("./dto/responseDocument.dto");
 const class_transformer_1 = require("class-transformer");
 const pagination_interface_1 = require("../../common/interface/pagination.interface");
+const pdf_lib_1 = require("pdf-lib");
+const path = __importStar(require("path"));
 let DocumentService = class DocumentService {
     documentModel;
     pageModel;
@@ -74,42 +76,139 @@ let DocumentService = class DocumentService {
     }
     async create(data) {
         const { file, ...docInfo } = data;
-        const fileExt = file.originalname.split('.').pop()?.toLowerCase();
-        if (!fileExt) {
-            throw new common_1.BadRequestException('File extension is missing');
-        }
-        const fileName = `documents/${(0, uuid_1.v4)()}.${fileExt}`;
-        const { data: uploaded, error } = await supabase_1.supabase.storage
+        const fileExt = path.extname(file.originalname)?.substring(1).toLowerCase();
+        const pageEntities = [];
+        let totalPages = 0;
+        let originalFilePath;
+        const nowTimestamp = Date.now();
+        const newDocId = new mongoose_2.Types.ObjectId();
+        originalFilePath = `documents/${nowTimestamp}_${file.originalname}`;
+        const { error: originalUploadError } = await supabase_1.supabase.storage
             .from('doconline')
-            .upload(fileName, file.buffer, {
+            .upload(originalFilePath, file.buffer, {
             contentType: file.mimetype,
-            cacheControl: '3600',
             upsert: false,
         });
-        if (error) {
-            throw new common_1.BadRequestException(`Upload failed: ${error.message}`);
+        if (originalUploadError) {
+            throw new common_1.BadRequestException(`Tải file gốc thất bại: ${originalUploadError.message}`);
         }
-        const { data: urlData } = supabase_1.supabase.storage
+        const { data: originalUrlData } = supabase_1.supabase.storage
             .from('doconline')
-            .getPublicUrl(fileName);
-        const filePath = urlData.publicUrl;
-        const totalPages = await this.analyzeFile(file);
+            .getPublicUrl(originalFilePath);
+        if (!originalUrlData?.publicUrl ||
+            typeof originalUrlData.publicUrl !== 'string') {
+            throw new common_1.BadRequestException('Không thể lấy publicUrl cho file gốc.');
+        }
+        if (fileExt === 'pdf') {
+            const pdfDoc = await pdf_lib_1.PDFDocument.load(file.buffer);
+            const pages = pdfDoc.getPages();
+            totalPages = pages.length;
+            for (let i = 0; i < totalPages; i++) {
+                const singlePageDoc = await pdf_lib_1.PDFDocument.create();
+                const [copiedPage] = await singlePageDoc.copyPages(pdfDoc, [i]);
+                singlePageDoc.addPage(copiedPage);
+                const pdfBytes = await singlePageDoc.save();
+                const pageFileName = `documents/${newDocId}/page_${i + 1}.pdf`;
+                const { error } = await supabase_1.supabase.storage
+                    .from('doconline')
+                    .upload(pageFileName, Buffer.from(pdfBytes), {
+                    contentType: 'application/pdf',
+                    upsert: false,
+                });
+                if (error) {
+                    throw new common_1.BadRequestException(`Upload page ${i + 1} thất bại: ${error.message}`);
+                }
+                const { data: urlData } = supabase_1.supabase.storage
+                    .from('doconline')
+                    .getPublicUrl(pageFileName);
+                pageEntities.push({
+                    documentId: newDocId,
+                    pageNumber: i + 1,
+                    filePath: urlData.publicUrl,
+                    fileType: 'pdf',
+                });
+            }
+        }
+        else if (fileExt === 'txt') {
+            const text = file.buffer.toString('utf-8').trim();
+            const charsPerPage = 100000;
+            const totalChunks = Math.ceil(text.length / charsPerPage);
+            for (let i = 0; i < totalChunks; i++) {
+                const chunkText = text.slice(i * charsPerPage, (i + 1) * charsPerPage);
+                const pageFileName = `documents/${newDocId}/page_${i + 1}.txt`;
+                const { error } = await supabase_1.supabase.storage
+                    .from('doconline')
+                    .upload(pageFileName, Buffer.from(chunkText), {
+                    contentType: 'text/plain',
+                    upsert: false,
+                });
+                if (error) {
+                    throw new common_1.BadRequestException(`Upload TXT page ${i + 1} thất bại: ${error.message}`);
+                }
+                const { data: urlData } = supabase_1.supabase.storage
+                    .from('doconline')
+                    .getPublicUrl(pageFileName);
+                pageEntities.push({
+                    documentId: newDocId,
+                    pageNumber: i + 1,
+                    filePath: urlData.publicUrl,
+                    fileType: 'txt',
+                });
+            }
+            totalPages = pageEntities.length;
+        }
+        else if (fileExt === 'xlsx') {
+            const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            const rowsPerPage = 30;
+            const totalChunks = Math.ceil(rows.length / rowsPerPage);
+            for (let i = 0; i < totalChunks; i++) {
+                const chunkRows = rows.slice(i * rowsPerPage, (i + 1) * rowsPerPage);
+                const contentLines = chunkRows
+                    .map((row) => row.join(' | '))
+                    .filter((line) => line.trim() !== '');
+                const pageContent = contentLines.join('\n');
+                const pageFileName = `documents/${newDocId}/page_${i + 1}.txt`;
+                const { error } = await supabase_1.supabase.storage
+                    .from('doconline')
+                    .upload(pageFileName, Buffer.from(pageContent), {
+                    contentType: 'text/plain',
+                    upsert: false,
+                });
+                if (error) {
+                    throw new common_1.BadRequestException(`Upload XLSX page ${i + 1} thất bại: ${error.message}`);
+                }
+                const { data: urlData } = supabase_1.supabase.storage
+                    .from('doconline')
+                    .getPublicUrl(pageFileName);
+                pageEntities.push({
+                    documentId: newDocId,
+                    pageNumber: i + 1,
+                    filePath: urlData.publicUrl,
+                    fileType: 'xlsx',
+                });
+            }
+            totalPages = pageEntities.length;
+        }
+        else {
+            throw new common_1.BadRequestException('Chỉ hỗ trợ file PDF, TXT hoặc XLSX.');
+        }
         const newDoc = new this.documentModel({
             ...docInfo,
-            filePath,
             fileType: fileExt,
             totalPages,
+            userId: data.userId,
+            _id: newDocId,
+            filePath: originalUrlData.publicUrl,
         });
-        const pages = Array.from({ length: totalPages }, (_, i) => ({
-            documentId: newDoc._id,
-            pageNumber: i + 1,
-            filePath: filePath,
-            fileType: fileExt,
-        }));
-        await this.pageModel.insertMany(pages);
-        const savedDoc = await newDoc.save();
-        await savedDoc.populate('userId', 'username');
-        return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, savedDoc.toObject(), {
+        await newDoc.save();
+        if (pageEntities.length > 0) {
+            await this.pageModel.insertMany(pageEntities);
+        }
+        await newDoc.populate('userId', 'username');
+        return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, newDoc.toObject(), {
             excludeExtraneousValues: true,
         });
     }
@@ -155,17 +254,15 @@ let DocumentService = class DocumentService {
             const fileExt = file.originalname.split('.').pop()?.toLowerCase();
             const allowedTypes = ['pdf', 'txt', 'xlsx'];
             if (!fileExt || !allowedTypes.includes(fileExt)) {
-                throw new common_1.BadRequestException(`Only .pdf, .txt, .xlsx files are allowed.`);
+                throw new common_1.BadRequestException(`Chỉ cho phép file .pdf, .txt, hoặc .xlsx.`);
             }
             const pages = await this.pageModel.find({ documentId: document._id });
             for (const page of pages) {
                 if (page.filePath) {
-                    const pageFileName = page.filePath.split('/').pop();
-                    if (pageFileName) {
-                        await supabase_1.supabase.storage
-                            .from('doconline')
-                            .remove([`pages/${pageFileName}`]);
-                    }
+                    const pageFileName = page.filePath.split('/').slice(-1)[0];
+                    await supabase_1.supabase.storage
+                        .from('doconline')
+                        .remove([`documents/${document._id}/pages/${pageFileName}`]);
                 }
             }
             await this.pageModel.deleteMany({ documentId: document._id });
@@ -175,38 +272,125 @@ let DocumentService = class DocumentService {
                     .from('doconline')
                     .remove([`documents/${oldFileName}`]);
             }
-            const newFileName = `documents/document-${id}-${(0, uuid_1.v4)()}.${fileExt}`;
-            const { data, error } = await supabase_1.supabase.storage
+            const originalFileName = `documents/document-${id}-${(0, uuid_1.v4)()}.${fileExt}`;
+            const { error: uploadError } = await supabase_1.supabase.storage
                 .from('doconline')
-                .upload(newFileName, file.buffer, {
+                .upload(originalFileName, file.buffer, {
                 contentType: file.mimetype,
                 cacheControl: '3600',
                 upsert: false,
             });
-            if (error) {
-                throw new common_1.BadRequestException(`Upload failed: ${error.message}`);
+            if (uploadError) {
+                throw new common_1.BadRequestException(`Upload file gốc thất bại: ${uploadError.message}`);
             }
-            const { data: urlData } = supabase_1.supabase.storage
+            const { data: originalUrlData } = supabase_1.supabase.storage
                 .from('doconline')
-                .getPublicUrl(newFileName);
-            const totalPages = await this.analyzeFile(file);
-            document.filePath = urlData.publicUrl;
+                .getPublicUrl(originalFileName);
+            if (!originalUrlData?.publicUrl ||
+                typeof originalUrlData.publicUrl !== 'string') {
+                throw new common_1.BadRequestException('Không thể lấy URL file gốc.');
+            }
+            document.filePath = originalUrlData.publicUrl;
             document.fileType = fileExt;
-            document.totalPages = totalPages;
-            const newPages = Array.from({ length: totalPages }, (_, i) => ({
-                documentId: document._id,
-                pageNumber: i + 1,
-                filePath: urlData.publicUrl,
-                fileType: fileExt,
-            }));
+            const newPages = [];
+            if (fileExt === 'pdf') {
+                const pdfDoc = await pdf_lib_1.PDFDocument.load(file.buffer);
+                const totalPages = pdfDoc.getPages().length;
+                for (let i = 0; i < totalPages; i++) {
+                    const singlePageDoc = await pdf_lib_1.PDFDocument.create();
+                    const [copiedPage] = await singlePageDoc.copyPages(pdfDoc, [i]);
+                    singlePageDoc.addPage(copiedPage);
+                    const pdfBytes = await singlePageDoc.save();
+                    const pageFileName = `documents/${document._id}/pages/page_${i + 1}.pdf`;
+                    const { error } = await supabase_1.supabase.storage
+                        .from('doconline')
+                        .upload(pageFileName, Buffer.from(pdfBytes), {
+                        contentType: 'application/pdf',
+                        cacheControl: '3600',
+                        upsert: false,
+                    });
+                    if (error) {
+                        throw new common_1.BadRequestException(`Upload trang ${i + 1} thất bại: ${error.message}`);
+                    }
+                    const { data: urlData } = supabase_1.supabase.storage
+                        .from('doconline')
+                        .getPublicUrl(pageFileName);
+                    newPages.push({
+                        documentId: document._id,
+                        pageNumber: i + 1,
+                        filePath: urlData.publicUrl,
+                        fileType: 'pdf',
+                    });
+                }
+                document.totalPages = totalPages;
+            }
+            else if (fileExt === 'txt') {
+                const text = file.buffer.toString('utf-8').trim();
+                const charsPerPage = 1000;
+                const totalChunks = Math.ceil(text.length / charsPerPage);
+                for (let i = 0; i < totalChunks; i++) {
+                    const chunkText = text.slice(i * charsPerPage, (i + 1) * charsPerPage);
+                    const pageFileName = `documents/${document._id}/pages/page_${i + 1}.txt`;
+                    const { error } = await supabase_1.supabase.storage
+                        .from('doconline')
+                        .upload(pageFileName, Buffer.from(chunkText), {
+                        contentType: 'text/plain',
+                        cacheControl: '3600',
+                        upsert: false,
+                    });
+                    if (error) {
+                        throw new common_1.BadRequestException(`Upload trang văn bản ${i + 1} thất bại: ${error.message}`);
+                    }
+                    const { data: urlData } = supabase_1.supabase.storage
+                        .from('doconline')
+                        .getPublicUrl(pageFileName);
+                    newPages.push({
+                        documentId: document._id,
+                        pageNumber: i + 1,
+                        filePath: urlData.publicUrl,
+                        fileType: 'txt',
+                    });
+                }
+                document.totalPages = totalChunks;
+            }
+            else if (fileExt === 'xlsx') {
+                const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+                const sheetNames = workbook.SheetNames;
+                for (let i = 0; i < sheetNames.length; i++) {
+                    const sheet = workbook.Sheets[sheetNames[i]];
+                    const csvBuffer = Buffer.from(XLSX.utils.sheet_to_csv(sheet), 'utf-8');
+                    const pageFileName = `documents/${document._id}/pages/sheet_${i + 1}.csv`;
+                    const { error } = await supabase_1.supabase.storage
+                        .from('doconline')
+                        .upload(pageFileName, csvBuffer, {
+                        contentType: 'text/csv',
+                        cacheControl: '3600',
+                        upsert: false,
+                    });
+                    if (error) {
+                        throw new common_1.BadRequestException(`Upload sheet ${i + 1} thất bại: ${error.message}`);
+                    }
+                    const { data: urlData } = supabase_1.supabase.storage
+                        .from('doconline')
+                        .getPublicUrl(pageFileName);
+                    newPages.push({
+                        documentId: document._id,
+                        pageNumber: i + 1,
+                        filePath: urlData.publicUrl,
+                        fileType: 'xlsx',
+                    });
+                }
+                document.totalPages = sheetNames.length;
+            }
             await this.pageModel.insertMany(newPages);
         }
         Object.assign(document, dto);
         if (userId) {
             document.userId = new mongoose_2.Types.ObjectId(userId);
         }
-        const saved = document.save();
-        return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, saved, {
+        const saved = await document.save();
+        await saved.populate('userId', 'username');
+        return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, saved.toObject(), {
             excludeExtraneousValues: true,
         });
     }
@@ -240,6 +424,19 @@ let DocumentService = class DocumentService {
         else {
             throw new common_1.BadRequestException('Unsupported file type');
         }
+    }
+    async splitPdf(fileBuffer) {
+        const pdfDoc = await pdf_lib_1.PDFDocument.load(fileBuffer);
+        const numPages = pdfDoc.getPages().length;
+        const pagesBuffers = [];
+        for (let i = 0; i < numPages; i++) {
+            const subDoc = await pdf_lib_1.PDFDocument.create();
+            const [copiedPage] = await subDoc.copyPages(pdfDoc, [i]);
+            subDoc.addPage(copiedPage);
+            const pdfBytes = await subDoc.save();
+            pagesBuffers.push(Buffer.from(pdfBytes));
+        }
+        return pagesBuffers;
     }
 };
 exports.DocumentService = DocumentService;

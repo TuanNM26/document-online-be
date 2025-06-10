@@ -15,9 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PageController = void 0;
 const common_1 = require("@nestjs/common");
 const page_service_1 = require("./page.service");
-const createPage_dto_1 = require("./dto/createPage.dto");
 const platform_express_1 = require("@nestjs/platform-express");
 const swagger_1 = require("@nestjs/swagger");
+const responsePage_dto_1 = require("./dto/responsePage.dto");
 let PageController = class PageController {
     pageService;
     constructor(pageService) {
@@ -27,8 +27,8 @@ let PageController = class PageController {
         const pages = await this.pageService.findByDocumentId(documentId);
         return { data: pages };
     }
-    async createPage(dto, file) {
-        return this.pageService.createPage(dto, file);
+    async addPages(id, file) {
+        return this.pageService.addPagesToDocument(id, file);
     }
     findAll(page = '1', limit = '10', q) {
         return this.pageService.findAll(Number(page), Number(limit), q);
@@ -36,8 +36,8 @@ let PageController = class PageController {
     findOne(id) {
         return this.pageService.findOne(id);
     }
-    update(id, file) {
-        return this.pageService.update(id, file);
+    async updatePageFile(id, file) {
+        return this.pageService.updatePageFile(id, file);
     }
     remove(id) {
         return this.pageService.remove(id);
@@ -54,28 +54,34 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PageController.prototype, "getPagesByDocument", null);
 __decorate([
-    (0, common_1.Post)(),
+    (0, common_1.Post)(':id/pages'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
-    (0, swagger_1.ApiOperation)({ summary: 'Create a new page' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Thêm các trang vào tài liệu đã tồn tại' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiParam)({
+        name: 'id',
+        description: 'ID của document',
+        type: String,
+    }),
     (0, swagger_1.ApiBody)({
+        description: 'File PDF cần tách thành các trang và thêm vào document',
         schema: {
             type: 'object',
             properties: {
-                documentId: { type: 'string' },
                 file: {
                     type: 'string',
                     format: 'binary',
                 },
             },
+            required: ['file'],
         },
     }),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [createPage_dto_1.CreatePageDto, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
-], PageController.prototype, "createPage", null);
+], PageController.prototype, "addPages", null);
 __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get list of all pages' }),
@@ -99,11 +105,9 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PageController.prototype, "findOne", null);
 __decorate([
-    (0, common_1.Put)(':id'),
+    (0, common_1.Patch)(':id'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
-    (0, swagger_1.ApiOperation)({ summary: 'Update a page' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
-    (0, swagger_1.ApiParam)({ name: 'id', required: true }),
     (0, swagger_1.ApiBody)({
         schema: {
             type: 'object',
@@ -115,12 +119,13 @@ __decorate([
             },
         },
     }),
+    (0, swagger_1.ApiOkResponse)({ type: [responsePage_dto_1.ResponsePageDto] }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
-    __metadata("design:returntype", void 0)
-], PageController.prototype, "update", null);
+    __metadata("design:returntype", Promise)
+], PageController.prototype, "updatePageFile", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete a page' }),

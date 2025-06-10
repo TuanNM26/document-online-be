@@ -64,7 +64,8 @@ const responsePage_dto_1 = require("./dto/responsePage.dto");
 const class_transformer_1 = require("class-transformer");
 const pagination_interface_1 = require("../../common/interface/pagination.interface");
 const pdf_parse_1 = __importDefault(require("pdf-parse"));
-const DOCOLINE = "doconline";
+const pdf_lib_1 = require("pdf-lib");
+const DOCOLINE = 'doconline';
 let PageService = class PageService {
     pageModel;
     documentModel;
@@ -74,67 +75,55 @@ let PageService = class PageService {
         this.documentModel = documentModel;
         this.documentGateway = documentGateway;
     }
-    async createPage(dto, file) {
-        const document = await this.documentModel.findById(dto.documentId);
+    async addPagesToDocument(documentId, file) {
+        const document = await this.documentModel.findById(documentId);
         if (!document) {
-            throw new common_1.BadRequestException(message_1.MESSAGES.DOCUMENT_NOT_FOUND);
+            throw new common_1.NotFoundException(message_1.MESSAGES.DOCUMENT_NOT_FOUND);
         }
-        this.validateFileType(document.fileType, file);
-        const fileExt = file.originalname.split('.').pop() || 'pdf';
-        const pdfData = await (0, pdf_parse_1.default)(file.buffer);
-        const totalNewPages = pdfData.numpages;
-        if (!totalNewPages || totalNewPages <= 0) {
-            throw new common_1.BadRequestException('Không thể đọc được số trang PDF.');
+        const fileExt = file.originalname.split('.').pop()?.toLowerCase();
+        if (fileExt !== 'pdf') {
+            throw new common_1.BadRequestException('Chỉ hỗ trợ thêm trang từ file .pdf');
         }
-        let nextPageNumber = 1;
-        const lastPage = await this.pageModel
-            .findOne({ documentId: new mongoose_2.Types.ObjectId(dto.documentId) })
-            .sort({ pageNumber: -1 })
-            .exec();
-        if (lastPage) {
-            nextPageNumber = lastPage.pageNumber + 1;
-        }
-        console.log(lastPage);
-        console.log(nextPageNumber);
-        const fileName = `pages/${dto.documentId}-${(0, uuid_1.v4)()}.${fileExt}`;
-        const { error } = await supabase_1.supabase.storage
-            .from(DOCOLINE)
-            .upload(fileName, file.buffer, {
-            contentType: file.mimetype,
-            cacheControl: '3600',
-            upsert: false,
-        });
-        if (error) {
-            throw new common_1.BadRequestException(`Upload failed: ${error.message}`);
-        }
-        const { data: urlData } = supabase_1.supabase.storage
-            .from(DOCOLINE)
-            .getPublicUrl(fileName);
-        const publicUrl = urlData.publicUrl;
-        const createdPageDocs = [];
-        console.log(dto.documentId);
-        for (let i = 0; i < totalNewPages; i++) {
-            const page = new this.pageModel({
-                documentId: new mongoose_2.Types.ObjectId(dto.documentId),
-                pageNumber: nextPageNumber + i,
-                filePath: publicUrl,
-                fileType: fileExt,
-                pdfPageIndex: i + 1,
+        const pdfDoc = await pdf_lib_1.PDFDocument.load(file.buffer);
+        const numNewPages = pdfDoc.getPages().length;
+        const existingPages = await this.pageModel
+            .find({ documentId: new mongoose_2.Types.ObjectId(documentId) })
+            .sort({ pageNumber: 1 });
+        const currentPageCount = existingPages.length;
+        const newPages = [];
+        for (let i = 0; i < numNewPages; i++) {
+            const newPageDoc = await pdf_lib_1.PDFDocument.create();
+            const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
+            newPageDoc.addPage(copiedPage);
+            const newPageBytes = await newPageDoc.save();
+            const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}.pdf`;
+            const { error } = await supabase_1.supabase.storage
+                .from('doconline')
+                .upload(pageFileName, Buffer.from(newPageBytes), {
+                contentType: 'application/pdf',
+                cacheControl: '3600',
+                upsert: false,
             });
-            await page.save();
-            createdPageDocs.push(page);
+            if (error) {
+                throw new common_1.BadRequestException(`Upload trang mới thất bại: ${error.message}`);
+            }
+            const { data: urlData } = supabase_1.supabase.storage
+                .from('doconline')
+                .getPublicUrl(pageFileName);
+            console.log(currentPageCount);
+            newPages.push({
+                documentId: document._id,
+                pageNumber: currentPageCount + i + 1,
+                filePath: urlData.publicUrl,
+                fileType: 'pdf',
+            });
         }
-        await this.documentModel.findByIdAndUpdate(dto.documentId, {
-            $inc: { totalPages: totalNewPages },
-        });
-        const populatedPages = await this.pageModel
-            .find({ _id: { $in: createdPageDocs.map(p => p._id) } })
-            .populate('documentId', 'title field filePath fileType totalPages')
-            .exec();
-        await this.documentGateway.notifyPageChange(dto.documentId.toString(), 'added');
-        return populatedPages.map(page => (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, page.toObject(), {
+        const insertedPages = await this.pageModel.insertMany(newPages);
+        document.totalPages = currentPageCount + numNewPages;
+        await document.save();
+        return (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, insertedPages.map((p) => p.toObject()), {
             excludeExtraneousValues: true,
-        }));
+        });
     }
     async analyzeFile(file) {
         const mimetype = file.mimetype;
@@ -192,94 +181,72 @@ let PageService = class PageService {
             excludeExtraneousValues: true,
         });
     }
-    async update(id, file) {
-        const oldPage = await this.pageModel.findById(id);
-        if (!oldPage) {
-            throw new common_1.NotFoundException(message_1.MESSAGES.PAGE_NOT_FOUND);
+    async updatePageFile(id, file) {
+        const page = await this.pageModel.findById(id);
+        if (!page) {
+            throw new common_1.NotFoundException('Trang không tồn tại');
         }
-        if (file) {
-            const document = await this.documentModel.findById(oldPage.documentId);
-            if (!document) {
-                throw new common_1.BadRequestException(message_1.MESSAGES.DOCUMENT_NOT_FOUND);
-            }
-            this.validateFileType(document.fileType, file);
-            const fileExt = file.originalname.split('.').pop() || 'pdf';
-            const pdfData = await (0, pdf_parse_1.default)(file.buffer);
-            const totalNewPages = pdfData.numpages;
-            if (!totalNewPages || totalNewPages <= 0) {
-                throw new common_1.BadRequestException('Cannot read number of pages from the new PDF file.');
-            }
-            const oldPageNumber = oldPage.pageNumber;
-            const pageNumberDifference = totalNewPages - 1;
-            if (pageNumberDifference !== 0) {
-                await this.pageModel.updateMany({
-                    documentId: oldPage.documentId,
-                    pageNumber: { $gt: oldPageNumber },
-                }, { $inc: { pageNumber: pageNumberDifference } });
-            }
-            const oldFileName = oldPage.filePath.split('/').pop();
-            if (oldFileName) {
-                const { error: deleteError } = await supabase_1.supabase.storage
-                    .from(DOCOLINE)
-                    .remove([`pages/${oldFileName}`]);
-                if (deleteError) {
-                    console.warn(`Failed to delete old file ${oldFileName}: ${deleteError.message}`);
-                }
-            }
-            await this.pageModel.deleteOne({ _id: oldPage._id });
-            const newFileName = `pages/${oldPage.documentId}-${(0, uuid_1.v4)()}.${fileExt}`;
-            const { error: uploadError } = await supabase_1.supabase.storage
-                .from(DOCOLINE)
-                .upload(newFileName, file.buffer, {
-                contentType: file.mimetype,
+        const fileExt = file.originalname.split('.').pop()?.toLowerCase();
+        if (fileExt !== 'pdf') {
+            throw new common_1.BadRequestException('Chỉ hỗ trợ cập nhật file .pdf');
+        }
+        const pdfDoc = await pdf_lib_1.PDFDocument.load(file.buffer);
+        const newPdfPages = pdfDoc.getPages();
+        const numNewPages = newPdfPages.length;
+        if (page.filePath) {
+            const oldFileName = page.filePath.split('/').slice(-1)[0];
+            await supabase_1.supabase.storage.from('doconline').remove([
+                `documents/${page.documentId}/pages/${oldFileName}`,
+            ]);
+        }
+        await this.pageModel.findByIdAndDelete(page._id);
+        const nextPages = await this.pageModel
+            .find({
+            documentId: page.documentId,
+            pageNumber: { $gt: page.pageNumber },
+        })
+            .sort({ pageNumber: 1 });
+        const shiftAmount = numNewPages - 1;
+        for (const nextPage of nextPages) {
+            nextPage.pageNumber += shiftAmount;
+            await nextPage.save();
+        }
+        const newPages = [];
+        for (let i = 0; i < numNewPages; i++) {
+            const newPageDoc = await pdf_lib_1.PDFDocument.create();
+            const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
+            newPageDoc.addPage(copiedPage);
+            const newPageBytes = await newPageDoc.save();
+            const pageFileName = `documents/${page.documentId}/pages/page_${page.pageNumber + i}-${(0, uuid_1.v4)()}.pdf`;
+            const { error } = await supabase_1.supabase.storage
+                .from('doconline')
+                .upload(pageFileName, Buffer.from(newPageBytes), {
+                contentType: 'application/pdf',
                 cacheControl: '3600',
                 upsert: false,
             });
-            if (uploadError) {
-                throw new common_1.BadRequestException(`Upload new file failed: ${uploadError.message}`);
+            if (error) {
+                throw new common_1.BadRequestException(`Tải trang mới thất bại: ${error.message}`);
             }
             const { data: urlData } = supabase_1.supabase.storage
-                .from(DOCOLINE)
-                .getPublicUrl(newFileName);
-            const newPublicUrl = urlData.publicUrl;
-            const createdPageDocs = [];
-            for (let i = 0; i < totalNewPages; i++) {
-                const newPage = new this.pageModel({
-                    documentId: new mongoose_2.Types.ObjectId(oldPage.documentId),
-                    pageNumber: oldPageNumber + i,
-                    filePath: newPublicUrl,
-                    fileType: fileExt,
-                    pdfPageIndex: i + 1,
-                });
-                await newPage.save();
-                createdPageDocs.push(newPage);
-            }
-            await this.documentModel.findByIdAndUpdate(oldPage.documentId, {
-                $inc: { totalPages: pageNumberDifference },
-            });
-            await this.documentGateway.notifyPageChange(oldPage.documentId.toString(), 'updated');
-            const populatedPages = await this.pageModel
-                .find({ _id: { $in: createdPageDocs.map(p => p._id) } })
-                .populate('documentId', 'title field filePath fileType totalPages')
-                .exec();
-            return populatedPages.map(page => (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, page.toObject(), {
-                excludeExtraneousValues: true,
-            }));
-        }
-        else {
-            const savedPage = await oldPage.save();
-            await this.documentGateway.notifyPageChange(oldPage.documentId.toString(), 'updated');
-            const populatedPage = await this.pageModel
-                .findById(savedPage._id)
-                .populate('documentId', 'title field filePath fileType totalPages')
-                .exec();
-            if (!populatedPage) {
-                throw new common_1.NotFoundException("not found");
-            }
-            return (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, populatedPage.toObject(), {
-                excludeExtraneousValues: true,
+                .from('doconline')
+                .getPublicUrl(pageFileName);
+            newPages.push({
+                documentId: page.documentId,
+                pageNumber: page.pageNumber + i,
+                filePath: urlData.publicUrl,
+                fileType: fileExt,
             });
         }
+        const inserted = await this.pageModel.insertMany(newPages);
+        const document = await this.documentModel.findById(page.documentId);
+        if (document) {
+            document.totalPages += shiftAmount;
+            await document.save();
+        }
+        return (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, inserted.map(p => p.toObject()), {
+            excludeExtraneousValues: true,
+        });
     }
     async remove(id) {
         const page = await this.pageModel.findById(id);

@@ -21,4 +21,5 @@ export declare class DocumentService {
     update(id: string, dto: UpdateDocumentDto, file?: Express.Multer.File, userId?: string): Promise<ResponseDocumentDto>;
     delete(id: string): Promise<void>;
     analyzeFile(file: Express.Multer.File): Promise<number>;
+    splitPdf(fileBuffer: Buffer): Promise<Buffer[]>;
 }

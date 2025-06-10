@@ -30,7 +30,7 @@ __decorate([
     __metadata("design:type", String)
 ], Document.prototype, "field", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, unique: true }),
+    (0, mongoose_1.Prop)({ unique: true }),
     __metadata("design:type", String)
 ], Document.prototype, "filePath", void 0);
 __decorate([

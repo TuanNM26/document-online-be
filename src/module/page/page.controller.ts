@@ -9,6 +9,7 @@ import {
   Put,
   UseInterceptors,
   UploadedFile,
+  Patch,
 } from '@nestjs/common';
 import { PageService } from './page.service';
 import { CreatePageDto } from './dto/createPage.dto';
@@ -21,7 +22,9 @@ import {
   ApiBody,
   ApiParam,
   ApiQuery,
+  ApiOkResponse,
 } from '@nestjs/swagger';
+import { ResponsePageDto } from './dto/responsePage.dto';
 
 @ApiTags('Pages')
 @Controller('pages')
@@ -36,27 +39,33 @@ export class PageController {
     return { data: pages };
   }
 
-  @Post()
+  @Post(':id/pages')
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Create a new page' })
+  @ApiOperation({ summary: 'Thêm các trang vào tài liệu đã tồn tại' })
   @ApiConsumes('multipart/form-data')
+  @ApiParam({
+    name: 'id',
+    description: 'ID của document',
+    type: String,
+  })
   @ApiBody({
+    description: 'File PDF cần tách thành các trang và thêm vào document',
     schema: {
       type: 'object',
       properties: {
-        documentId: { type: 'string' },
         file: {
           type: 'string',
           format: 'binary',
         },
       },
+      required: ['file'],
     },
   })
-  async createPage(
-    @Body() dto: CreatePageDto,
+  async addPages(
+    @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
-  ) {
-    return this.pageService.createPage(dto, file);
+  ): Promise<ResponsePageDto[]> {
+    return this.pageService.addPagesToDocument(id, file);
   }
 
   @Get()
@@ -79,11 +88,9 @@ export class PageController {
     return this.pageService.findOne(id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Update a page' })
   @ApiConsumes('multipart/form-data')
-  @ApiParam({ name: 'id', required: true })
   @ApiBody({
     schema: {
       type: 'object',
@@ -95,11 +102,12 @@ export class PageController {
       },
     },
   })
-  update(
+  @ApiOkResponse({ type: [ResponsePageDto] })
+  async updatePageFile(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
-  ) {
-    return this.pageService.update(id, file);
+  ): Promise<ResponsePageDto[]> {
+    return this.pageService.updatePageFile(id, file);
   }
 
   @Delete(':id')
