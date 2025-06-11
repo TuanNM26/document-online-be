@@ -135,7 +135,8 @@ __decorate([
 ], DocumentController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
-    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard, role_guard_1.RolesGuard),
+    (0, role_1.Roles)('admin'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete a document by ID' }),
     (0, swagger_1.ApiParam)({ name: 'id', required: true, description: 'Document ID' }),
     __param(0, (0, common_1.Param)('id')),

@@ -122,7 +122,8 @@ export class DocumentController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: 'Delete a document by ID' })
   @ApiParam({ name: 'id', required: true, description: 'Document ID' })
   remove(@Param('id') id: string) {

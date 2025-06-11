@@ -32,8 +32,7 @@ import { ResponseBookmarkDto } from './dto/responseBookmark.dto';
 export class BookmarkController {
   constructor(private readonly bookmarkService: BookmarkService) {}
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard)
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'q', required: false, type: String })
@@ -59,8 +58,7 @@ export class BookmarkController {
   @Post()
   @ApiOperation({ summary: 'Create a new bookmark' })
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard)
   @ApiBody({ type: CreateBookmarkDto })
   @ApiResponse({ status: 201, description: 'Bookmark created' })
   create(@Body() dto: CreateBookmarkDto, @Req() req: any) {
