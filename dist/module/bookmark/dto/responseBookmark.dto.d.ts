@@ -13,7 +13,7 @@ export declare class userInfo {
 }
 export declare class ResponseBookmarkDto {
     _id: Types.ObjectId;
-    pageNumber: number;
+    pageId: string;
     note: string;
     document: DocumentInfo;
     user: userInfo;

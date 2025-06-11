@@ -188,99 +188,139 @@ export class PageService {
     });
   }
 
-  async updatePageFile(id: string, file: Express.Multer.File): Promise<ResponsePageDto[]> {
-  const page = await this.pageModel.findById(id);
-  if (!page) {
-    throw new NotFoundException('Trang không tồn tại');
-  }
-
-  const fileExt = file.originalname.split('.').pop()?.toLowerCase();
-  if (fileExt !== 'pdf') {
-    throw new BadRequestException('Chỉ hỗ trợ cập nhật file .pdf');
-  }
-
-  // Load PDF và lấy số lượng trang mới
-  const pdfDoc = await PDFDocument.load(file.buffer);
-  const newPdfPages = pdfDoc.getPages();
-  const numNewPages = newPdfPages.length;
-
-  // Xóa file cũ khỏi Supabase
-  if (page.filePath) {
-    const oldFileName = page.filePath.split('/').slice(-1)[0];
-    await supabase.storage.from('doconline').remove([
-      `documents/${page.documentId}/pages/${oldFileName}`,
-    ]);
-  }
-
-  // Xóa page hiện tại khỏi DB
-  await this.pageModel.findByIdAndDelete(page._id);
-
-  // Lấy các trang sau page hiện tại
-  const nextPages = await this.pageModel
-    .find({
-      documentId: page.documentId,
-      pageNumber: { $gt: page.pageNumber },
-    })
-    .sort({ pageNumber: 1 });
-
-  // Dịch pageNumber của các page sau
-  const shiftAmount = numNewPages - 1;
-  for (const nextPage of nextPages) {
-    nextPage.pageNumber += shiftAmount;
-    await nextPage.save();
-  }
-
-  // Tạo các page mới từ file PDF
-  const newPages: Partial<Page>[] = [];
-
-  for (let i = 0; i < numNewPages; i++) {
-    const newPageDoc = await PDFDocument.create();
-    const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
-    newPageDoc.addPage(copiedPage);
-    const newPageBytes = await newPageDoc.save();
-
-    const pageFileName = `documents/${page.documentId}/pages/page_${page.pageNumber + i}-${uuidv4()}.pdf`;
-
-    const { error } = await supabase.storage
-      .from('doconline')
-      .upload(pageFileName, Buffer.from(newPageBytes), {
-        contentType: 'application/pdf',
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (error) {
-      throw new BadRequestException(`Tải trang mới thất bại: ${error.message}`);
+  async updatePageFile(
+    id: string,
+    file: Express.Multer.File,
+  ): Promise<ResponsePageDto[]> {
+    const page = await this.pageModel.findById(id);
+    if (!page) {
+      throw new NotFoundException('Trang không tồn tại');
     }
 
-    const { data: urlData } = supabase.storage
-      .from('doconline')
-      .getPublicUrl(pageFileName);
+    const fileExt = file.originalname.split('.').pop()?.toLowerCase();
+    const allowedTypes: Record<string, string[]> = {
+      pdf: ['pdf'],
+      txt: ['txt'],
+      xlsx: ['xlsx', 'xls'],
+    };
 
-    newPages.push({
-      documentId: page.documentId,
-      pageNumber: page.pageNumber + i,
-      filePath: urlData.publicUrl,
-      fileType: fileExt,
-    });
+    const currentType = page.fileType?.toLowerCase();
+    const isAllowed = allowedTypes[currentType]?.includes(fileExt || '');
+    if (!isAllowed) {
+      throw new BadRequestException(
+        `Không thể cập nhật file .${fileExt}. Trang này chỉ chấp nhận cập nhật file ${allowedTypes[currentType]?.join(', ')}`,
+      );
+    }
+
+    // Xóa file cũ khỏi Supabase
+    if (page.filePath) {
+      const oldFileName = page.filePath.split('/').slice(-1)[0];
+      await supabase.storage
+        .from('doconline')
+        .remove([`documents/${page.documentId}/pages/${oldFileName}`]);
+    }
+
+    // Xóa page hiện tại
+    await this.pageModel.findByIdAndDelete(page._id);
+
+    // Định nghĩa biến sẽ chứa các page mới tạo
+    const newPages: Partial<Page>[] = [];
+
+    if (fileExt === 'pdf') {
+      // Xử lý như cũ: phân tách PDF thành các page nhỏ
+      const pdfDoc = await PDFDocument.load(file.buffer);
+      const newPdfPages = pdfDoc.getPages();
+      const numNewPages = newPdfPages.length;
+
+      // Dịch các page phía sau
+      const shiftAmount = numNewPages - 1;
+      const nextPages = await this.pageModel
+        .find({
+          documentId: page.documentId,
+          pageNumber: { $gt: page.pageNumber },
+        })
+        .sort({ pageNumber: 1 });
+
+      for (const nextPage of nextPages) {
+        nextPage.pageNumber += shiftAmount;
+        await nextPage.save();
+      }
+
+      for (let i = 0; i < numNewPages; i++) {
+        const newPageDoc = await PDFDocument.create();
+        const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
+        newPageDoc.addPage(copiedPage);
+        const newPageBytes = await newPageDoc.save();
+
+        const pageFileName = `documents/${page.documentId}/pages/page_${page.pageNumber + i}-${uuidv4()}.pdf`;
+
+        const { error } = await supabase.storage
+          .from('doconline')
+          .upload(pageFileName, Buffer.from(newPageBytes), {
+            contentType: 'application/pdf',
+            cacheControl: '3600',
+          });
+
+        if (error)
+          throw new BadRequestException(`Tải file thất bại: ${error.message}`);
+
+        const { data: urlData } = supabase.storage
+          .from('doconline')
+          .getPublicUrl(pageFileName);
+
+        newPages.push({
+          documentId: page.documentId,
+          pageNumber: page.pageNumber + i,
+          filePath: urlData.publicUrl,
+          fileType: 'pdf',
+        });
+      }
+
+      // Cập nhật totalPages
+      const document = await this.documentModel.findById(page.documentId);
+      if (document) {
+        document.totalPages += shiftAmount;
+        await document.save();
+      }
+    } else {
+      // txt hoặc xlsx thì chỉ tạo 1 page mới duy nhất (không phân trang)
+      const pageFileName = `documents/${page.documentId}/pages/page_${page.pageNumber}-${uuidv4()}.${fileExt}`;
+
+      const { error } = await supabase.storage
+        .from('doconline')
+        .upload(pageFileName, file.buffer, {
+          contentType: file.mimetype,
+          cacheControl: '3600',
+        });
+
+      if (error)
+        throw new BadRequestException(`Tải file thất bại: ${error.message}`);
+
+      const { data: urlData } = supabase.storage
+        .from('doconline')
+        .getPublicUrl(pageFileName);
+
+      newPages.push({
+        documentId: page.documentId,
+        pageNumber: page.pageNumber,
+        filePath: urlData.publicUrl,
+        fileType: fileExt,
+      });
+
+      // Không cần update totalPages vì chỉ thay đúng 1 page
+    }
+
+    // Lưu các page mới
+    const inserted = await this.pageModel.insertMany(newPages);
+
+    return plainToInstance(
+      ResponsePageDto,
+      inserted.map((p) => p.toObject()),
+      {
+        excludeExtraneousValues: true,
+      },
+    );
   }
-
-  // Lưu các page mới
-  const inserted = await this.pageModel.insertMany(newPages);
-
-  // Cập nhật lại tổng số trang của document
-  const document = await this.documentModel.findById(page.documentId);
-  if (document) {
-    document.totalPages += shiftAmount;
-    await document.save();
-  }
-
-  // Trả về danh sách page mới (ResponsePageDto[])
-  return plainToInstance(ResponsePageDto, inserted.map(p => p.toObject()), {
-    excludeExtraneousValues: true,
-  });
-}
-
 
   async remove(id: string) {
     const page = await this.pageModel.findById(id);

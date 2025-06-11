@@ -2,7 +2,7 @@ import { Document as MongooseDocument, Types } from 'mongoose';
 export declare class Bookmark {
     documentId: Types.ObjectId;
     userId: Types.ObjectId;
-    pageNumber: number;
+    pageId: Types.ObjectId;
     note?: string;
 }
 export type BookmarkDocument = Bookmark & MongooseDocument;

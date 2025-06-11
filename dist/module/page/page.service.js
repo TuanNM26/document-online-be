@@ -187,64 +187,91 @@ let PageService = class PageService {
             throw new common_1.NotFoundException('Trang không tồn tại');
         }
         const fileExt = file.originalname.split('.').pop()?.toLowerCase();
-        if (fileExt !== 'pdf') {
-            throw new common_1.BadRequestException('Chỉ hỗ trợ cập nhật file .pdf');
+        const allowedTypes = {
+            pdf: ['pdf'],
+            txt: ['txt'],
+            xlsx: ['xlsx', 'xls'],
+        };
+        const currentType = page.fileType?.toLowerCase();
+        const isAllowed = allowedTypes[currentType]?.includes(fileExt || '');
+        if (!isAllowed) {
+            throw new common_1.BadRequestException(`Không thể cập nhật file .${fileExt}. Trang này chỉ chấp nhận cập nhật file ${allowedTypes[currentType]?.join(', ')}`);
         }
-        const pdfDoc = await pdf_lib_1.PDFDocument.load(file.buffer);
-        const newPdfPages = pdfDoc.getPages();
-        const numNewPages = newPdfPages.length;
         if (page.filePath) {
             const oldFileName = page.filePath.split('/').slice(-1)[0];
-            await supabase_1.supabase.storage.from('doconline').remove([
-                `documents/${page.documentId}/pages/${oldFileName}`,
-            ]);
+            await supabase_1.supabase.storage
+                .from('doconline')
+                .remove([`documents/${page.documentId}/pages/${oldFileName}`]);
         }
         await this.pageModel.findByIdAndDelete(page._id);
-        const nextPages = await this.pageModel
-            .find({
-            documentId: page.documentId,
-            pageNumber: { $gt: page.pageNumber },
-        })
-            .sort({ pageNumber: 1 });
-        const shiftAmount = numNewPages - 1;
-        for (const nextPage of nextPages) {
-            nextPage.pageNumber += shiftAmount;
-            await nextPage.save();
-        }
         const newPages = [];
-        for (let i = 0; i < numNewPages; i++) {
-            const newPageDoc = await pdf_lib_1.PDFDocument.create();
-            const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
-            newPageDoc.addPage(copiedPage);
-            const newPageBytes = await newPageDoc.save();
-            const pageFileName = `documents/${page.documentId}/pages/page_${page.pageNumber + i}-${(0, uuid_1.v4)()}.pdf`;
+        if (fileExt === 'pdf') {
+            const pdfDoc = await pdf_lib_1.PDFDocument.load(file.buffer);
+            const newPdfPages = pdfDoc.getPages();
+            const numNewPages = newPdfPages.length;
+            const shiftAmount = numNewPages - 1;
+            const nextPages = await this.pageModel
+                .find({
+                documentId: page.documentId,
+                pageNumber: { $gt: page.pageNumber },
+            })
+                .sort({ pageNumber: 1 });
+            for (const nextPage of nextPages) {
+                nextPage.pageNumber += shiftAmount;
+                await nextPage.save();
+            }
+            for (let i = 0; i < numNewPages; i++) {
+                const newPageDoc = await pdf_lib_1.PDFDocument.create();
+                const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
+                newPageDoc.addPage(copiedPage);
+                const newPageBytes = await newPageDoc.save();
+                const pageFileName = `documents/${page.documentId}/pages/page_${page.pageNumber + i}-${(0, uuid_1.v4)()}.pdf`;
+                const { error } = await supabase_1.supabase.storage
+                    .from('doconline')
+                    .upload(pageFileName, Buffer.from(newPageBytes), {
+                    contentType: 'application/pdf',
+                    cacheControl: '3600',
+                });
+                if (error)
+                    throw new common_1.BadRequestException(`Tải file thất bại: ${error.message}`);
+                const { data: urlData } = supabase_1.supabase.storage
+                    .from('doconline')
+                    .getPublicUrl(pageFileName);
+                newPages.push({
+                    documentId: page.documentId,
+                    pageNumber: page.pageNumber + i,
+                    filePath: urlData.publicUrl,
+                    fileType: 'pdf',
+                });
+            }
+            const document = await this.documentModel.findById(page.documentId);
+            if (document) {
+                document.totalPages += shiftAmount;
+                await document.save();
+            }
+        }
+        else {
+            const pageFileName = `documents/${page.documentId}/pages/page_${page.pageNumber}-${(0, uuid_1.v4)()}.${fileExt}`;
             const { error } = await supabase_1.supabase.storage
                 .from('doconline')
-                .upload(pageFileName, Buffer.from(newPageBytes), {
-                contentType: 'application/pdf',
+                .upload(pageFileName, file.buffer, {
+                contentType: file.mimetype,
                 cacheControl: '3600',
-                upsert: false,
             });
-            if (error) {
-                throw new common_1.BadRequestException(`Tải trang mới thất bại: ${error.message}`);
-            }
+            if (error)
+                throw new common_1.BadRequestException(`Tải file thất bại: ${error.message}`);
             const { data: urlData } = supabase_1.supabase.storage
                 .from('doconline')
                 .getPublicUrl(pageFileName);
             newPages.push({
                 documentId: page.documentId,
-                pageNumber: page.pageNumber + i,
+                pageNumber: page.pageNumber,
                 filePath: urlData.publicUrl,
                 fileType: fileExt,
             });
         }
         const inserted = await this.pageModel.insertMany(newPages);
-        const document = await this.documentModel.findById(page.documentId);
-        if (document) {
-            document.totalPages += shiftAmount;
-            await document.save();
-        }
-        return (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, inserted.map(p => p.toObject()), {
+        return (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, inserted.map((p) => p.toObject()), {
             excludeExtraneousValues: true,
         });
     }

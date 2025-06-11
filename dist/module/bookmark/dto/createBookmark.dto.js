@@ -14,8 +14,7 @@ const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 class CreateBookmarkDto {
     documentId;
-    pageNumber;
-    userId;
+    pageId;
     note;
 }
 exports.CreateBookmarkDto = CreateBookmarkDto;
@@ -26,17 +25,11 @@ __decorate([
     __metadata("design:type", String)
 ], CreateBookmarkDto.prototype, "documentId", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Bookmark page number', type: Number }),
-    (0, class_validator_1.IsNotEmpty)(),
-    (0, class_validator_1.IsNumber)(),
-    __metadata("design:type", Number)
-], CreateBookmarkDto.prototype, "pageNumber", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ description: 'ID of user create bookmark' }),
+    (0, swagger_1.ApiProperty)({ description: 'Bookmark page id', type: String }),
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreateBookmarkDto.prototype, "userId", void 0);
+], CreateBookmarkDto.prototype, "pageId", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ description: 'Note for bookmark', type: String }),
     (0, class_validator_1.IsOptional)(),

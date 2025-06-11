@@ -289,7 +289,6 @@ let DocumentService = class DocumentService {
                     console.error(`Lỗi khi cố gắng xóa file gốc cũ Supabase: ${document.filePath}`, e);
                 }
             }
-            console.log(`Đã xóa file gốc cũ cho document ID: ${document._id}`);
             const originalFileName = `documents/document-${id}-${(0, uuid_1.v4)()}.${fileExt}`;
             const { error: uploadError } = await supabase_1.supabase.storage
                 .from('doconline')

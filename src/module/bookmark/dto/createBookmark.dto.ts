@@ -7,15 +7,10 @@ export class CreateBookmarkDto {
   @IsString()
   documentId: string;
 
-  @ApiProperty({ description: 'Bookmark page number', type: Number })
-  @IsNotEmpty()
-  @IsNumber()
-  pageNumber: number;
-
-  @ApiProperty({ description: 'ID of user create bookmark' })
+  @ApiProperty({ description: 'Bookmark page id', type: String })
   @IsNotEmpty()
   @IsString()
-  userId: string;
+  pageId: string;
 
   @ApiPropertyOptional({ description: 'Note for bookmark', type: String })
   @IsOptional()

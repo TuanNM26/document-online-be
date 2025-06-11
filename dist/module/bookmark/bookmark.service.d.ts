@@ -11,7 +11,7 @@ export declare class BookmarkService {
     private pageModel;
     private documentModel;
     constructor(bookmarkModel: Model<BookmarkDocument>, pageModel: Model<PageDocument>, documentModel: Model<DocumentDocument>);
-    create(dto: CreateBookmarkDto): Promise<ResponseBookmarkDto>;
+    create(dto: CreateBookmarkDto, userId: string): Promise<ResponseBookmarkDto>;
     findAll(page?: number, limit?: number, q?: string): Promise<{
         data: ResponseBookmarkDto[];
         pagination: {
@@ -26,8 +26,17 @@ export declare class BookmarkService {
     remove(id: string): Promise<ResponseBookmarkDto>;
     getBookmarkPageFile(bookmarkId: string): Promise<{
         document: DocumentInfo;
-        pageNumber: number;
+        pageId: string;
         filePath: string;
         user: userInfo;
+    }>;
+    findAllByUserId(userId: string, page?: number, limit?: number, q?: string): Promise<{
+        data: ResponseBookmarkDto[];
+        pagination: {
+            totalItems: number;
+            totalPages: number;
+            currentPage: number;
+            pageSize: number;
+        };
     }>;
 }

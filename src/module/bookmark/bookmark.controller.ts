@@ -8,6 +8,7 @@ import {
   Put,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { BookmarkService } from './bookmark.service';
 import { CreateBookmarkDto } from '../bookmark/dto/createBookmark.dto';
@@ -22,18 +23,49 @@ import {
   ApiBearerAuth,
   ApiBody,
 } from '@nestjs/swagger';
+import { RolesGuard } from 'src/common/auth/strategy/role.guard';
+import { Roles } from 'src/common/decorator/role';
+import { ResponseBookmarkDto } from './dto/responseBookmark.dto';
 
 @ApiTags('Bookmarks')
 @Controller('bookmarks')
 export class BookmarkController {
   constructor(private readonly bookmarkService: BookmarkService) {}
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'q', required: false, type: String })
+  @Get('myBookmark')
+  async findMyBookmarks(
+    @Req() req: any,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('q') q?: string,
+  ): Promise<{
+    data: ResponseBookmarkDto[];
+    pagination: {
+      totalItems: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    };
+  }> {
+    const userId = req.user.id;
+    return this.bookmarkService.findAllByUserId(userId, page, limit, q);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a new bookmark' })
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @ApiBody({ type: CreateBookmarkDto })
   @ApiResponse({ status: 201, description: 'Bookmark created' })
-  create(@Body() dto: CreateBookmarkDto) {
-    return this.bookmarkService.create(dto);
+  create(@Body() dto: CreateBookmarkDto, @Req() req: any) {
+    const userId = req.user.id;
+    return this.bookmarkService.create(dto, userId);
   }
 
   @Get(':bookmarkId/page-file')

@@ -8,8 +8,8 @@ export class Bookmark {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
-  @Prop({ required: true })
-  pageNumber: number;
+  @Prop({ type: Types.ObjectId, ref: 'Page', required: true })
+  pageId: Types.ObjectId;
 
   @Prop()
   note?: string;
@@ -18,7 +18,4 @@ export class Bookmark {
 export type BookmarkDocument = Bookmark & MongooseDocument;
 export const BookmarkSchema = SchemaFactory.createForClass(Bookmark);
 
-BookmarkSchema.index(
-  { userId: 1, documentId: 1, pageNumber: 1 },
-  { unique: true },
-);
+BookmarkSchema.index({ userId: 1, documentId: 1, pageId: 1 }, { unique: true });

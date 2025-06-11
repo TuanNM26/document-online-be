@@ -1,6 +1,5 @@
 export declare class CreateBookmarkDto {
     documentId: string;
-    pageNumber: number;
-    userId: string;
+    pageId: string;
     note?: string;
 }

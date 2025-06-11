@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 
 import { Bookmark, BookmarkDocument } from './bookmark.schema';
 import { CreateBookmarkDto } from './dto/createBookmark.dto';
@@ -26,20 +26,24 @@ export class BookmarkService {
     @InjectModel(Document.name) private documentModel: Model<DocumentDocument>,
   ) {}
 
-  async create(dto: CreateBookmarkDto): Promise<ResponseBookmarkDto> {
+  async create(
+    dto: CreateBookmarkDto,
+    userId: string,
+  ): Promise<ResponseBookmarkDto> {
     const pageExists = await this.pageModel.exists({
-      documentId: dto.documentId,
-      pageNumber: dto.pageNumber,
+      _id: new Types.ObjectId(dto.pageId),
+      documentId: new Types.ObjectId(dto.documentId),
     });
 
+    console.log(pageExists);
     if (!pageExists) {
       throw new BadRequestException(MESSAGES.PAGE_NOT_EXIST_DOCUMENT);
     }
 
     const existing = await this.bookmarkModel.findOne({
-      documentId: dto.documentId,
-      userId: dto.userId,
-      pageNumber: dto.pageNumber,
+      documentId: new Types.ObjectId(dto.documentId),
+      userId: new Types.ObjectId(userId),
+      pageNumber: new Types.ObjectId(dto.pageId),
     });
 
     if (existing) {
@@ -47,6 +51,7 @@ export class BookmarkService {
     }
 
     const bookmark = new this.bookmarkModel(dto);
+    bookmark.userId = new Types.ObjectId(userId);
     const saved = await bookmark.save();
     const populated = await saved.populate('documentId', 'title field');
 
@@ -186,11 +191,9 @@ export class BookmarkService {
     });
   }
 
-  async getBookmarkPageFile(
-    bookmarkId: string,
-  ): Promise<{
+  async getBookmarkPageFile(bookmarkId: string): Promise<{
     document: DocumentInfo;
-    pageNumber: number;
+    pageId: string;
     filePath: string;
     user: userInfo;
   }> {
@@ -202,6 +205,7 @@ export class BookmarkService {
       .findById(bookmarkId)
       .populate('documentId')
       .populate('userId')
+      .populate('pageId')
       .lean();
 
     if (!bookmark) {
@@ -209,15 +213,10 @@ export class BookmarkService {
     }
 
     const document = bookmark.documentId;
-    const page = await this.pageModel
-      .findOne({
-        documentId: document._id,
-        pageNumber: bookmark.pageNumber,
-      })
-      .lean();
+    const page = await this.pageModel.findById(bookmark.pageId).lean();
 
-    if (!page) {
-      throw new NotFoundException('Page not found');
+    if (!page || !page.filePath) {
+      throw new NotFoundException('Page not found or missing file path');
     }
 
     const documentDto = plainToInstance(DocumentInfo, document, {
@@ -227,11 +226,95 @@ export class BookmarkService {
     const userDto = plainToInstance(userInfo, bookmark.userId, {
       excludeExtraneousValues: true,
     });
+
     return {
       document: documentDto,
-      pageNumber: bookmark.pageNumber,
+      pageId: page._id.toString(),
       filePath: page.filePath,
       user: userDto,
+    };
+  }
+
+  async findAllByUserId(
+    userId: string,
+    page = 1,
+    limit = 10,
+    q?: string,
+  ): Promise<{
+    data: ResponseBookmarkDto[];
+    pagination: {
+      totalItems: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    };
+  }> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+
+    const filter: any = { userId: new Types.ObjectId(userId) }; // Filter by userId
+
+    if (q && q.trim()) {
+      const regex = new RegExp(q.trim(), 'i');
+      const matchingDocuments = await this.documentModel
+        .find({
+          $or: [{ title: { $regex: regex } }, { field: { $regex: regex } }],
+        })
+        .select('_id');
+
+      const matchingDocumentIds = matchingDocuments.map((doc) =>
+        doc.id.toString(),
+      );
+      if (matchingDocumentIds.length > 0) {
+        filter.$and = [
+          { userId: new Types.ObjectId(userId) },
+          {
+            $or: [
+              { note: { $regex: regex } },
+              { documentId: { $in: matchingDocumentIds } },
+            ],
+          },
+        ];
+      } else {
+        filter.$and = [
+          { userId: new Types.ObjectId(userId) },
+          { note: { $regex: regex } },
+        ];
+      }
+    }
+
+    const [results, totalItems] = await Promise.all([
+      this.bookmarkModel
+        .find(filter)
+        .populate('documentId')
+        .populate('userId', 'username')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .lean(),
+      this.bookmarkModel.countDocuments(filter),
+    ]);
+
+    const withRenamed = results.map((bookmark) => ({
+      ...bookmark,
+      document: {
+        ...bookmark.documentId,
+        _id: bookmark.documentId?._id?.toString(),
+      },
+      user: bookmark.userId,
+    }));
+
+    return {
+      data: plainToInstance(ResponseBookmarkDto, withRenamed, {
+        excludeExtraneousValues: true,
+      }),
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+        pageSize: limit,
+      },
     };
   }
 }

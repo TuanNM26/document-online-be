@@ -15,7 +15,7 @@ const mongoose_2 = require("mongoose");
 let Bookmark = class Bookmark {
     documentId;
     userId;
-    pageNumber;
+    pageId;
     note;
 };
 exports.Bookmark = Bookmark;
@@ -28,9 +28,9 @@ __decorate([
     __metadata("design:type", mongoose_2.Types.ObjectId)
 ], Bookmark.prototype, "userId", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
-    __metadata("design:type", Number)
-], Bookmark.prototype, "pageNumber", void 0);
+    (0, mongoose_1.Prop)({ type: mongoose_2.Types.ObjectId, ref: 'Page', required: true }),
+    __metadata("design:type", mongoose_2.Types.ObjectId)
+], Bookmark.prototype, "pageId", void 0);
 __decorate([
     (0, mongoose_1.Prop)(),
     __metadata("design:type", String)
@@ -39,5 +39,5 @@ exports.Bookmark = Bookmark = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], Bookmark);
 exports.BookmarkSchema = mongoose_1.SchemaFactory.createForClass(Bookmark);
-exports.BookmarkSchema.index({ userId: 1, documentId: 1, pageNumber: 1 }, { unique: true });
+exports.BookmarkSchema.index({ userId: 1, documentId: 1, pageId: 1 }, { unique: true });
 //# sourceMappingURL=bookmark.schema.js.map

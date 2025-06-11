@@ -60,7 +60,7 @@ __decorate([
 ], userInfo.prototype, "username", void 0);
 class ResponseBookmarkDto {
     _id;
-    pageNumber;
+    pageId;
     note;
     document;
     user;
@@ -73,8 +73,8 @@ __decorate([
 ], ResponseBookmarkDto.prototype, "_id", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
-    __metadata("design:type", Number)
-], ResponseBookmarkDto.prototype, "pageNumber", void 0);
+    __metadata("design:type", String)
+], ResponseBookmarkDto.prototype, "pageId", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)

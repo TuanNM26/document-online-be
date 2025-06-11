@@ -17,14 +17,22 @@ const common_1 = require("@nestjs/common");
 const bookmark_service_1 = require("./bookmark.service");
 const createBookmark_dto_1 = require("../bookmark/dto/createBookmark.dto");
 const updateBookmark_dto_1 = require("../bookmark/dto/updateBookmark.dto");
+const jwt_guard_1 = require("../../common/auth/strategy/jwt.guard");
 const swagger_1 = require("@nestjs/swagger");
+const role_guard_1 = require("../../common/auth/strategy/role.guard");
+const role_1 = require("../../common/decorator/role");
 let BookmarkController = class BookmarkController {
     bookmarkService;
     constructor(bookmarkService) {
         this.bookmarkService = bookmarkService;
     }
-    create(dto) {
-        return this.bookmarkService.create(dto);
+    async findMyBookmarks(req, page = 1, limit = 10, q) {
+        const userId = req.user.id;
+        return this.bookmarkService.findAllByUserId(userId, page, limit, q);
+    }
+    create(dto, req) {
+        const userId = req.user.id;
+        return this.bookmarkService.create(dto, userId);
     }
     getPageFile(bookmarkId) {
         return this.bookmarkService.getBookmarkPageFile(bookmarkId);
@@ -44,13 +52,33 @@ let BookmarkController = class BookmarkController {
 };
 exports.BookmarkController = BookmarkController;
 __decorate([
+    (0, swagger_1.ApiBearerAuth)('access-token'),
+    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard, role_guard_1.RolesGuard),
+    (0, role_1.Roles)('admin'),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number, example: 1 }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number, example: 10 }),
+    (0, swagger_1.ApiQuery)({ name: 'q', required: false, type: String }),
+    (0, common_1.Get)('myBookmark'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('q')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object, Object, String]),
+    __metadata("design:returntype", Promise)
+], BookmarkController.prototype, "findMyBookmarks", null);
+__decorate([
     (0, common_1.Post)(),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new bookmark' }),
+    (0, swagger_1.ApiBearerAuth)('access-token'),
+    (0, common_1.UseGuards)(jwt_guard_1.JwtAuthGuard, role_guard_1.RolesGuard),
+    (0, role_1.Roles)('admin'),
     (0, swagger_1.ApiBody)({ type: createBookmark_dto_1.CreateBookmarkDto }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Bookmark created' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [createBookmark_dto_1.CreateBookmarkDto]),
+    __metadata("design:paramtypes", [createBookmark_dto_1.CreateBookmarkDto, Object]),
     __metadata("design:returntype", void 0)
 ], BookmarkController.prototype, "create", null);
 __decorate([

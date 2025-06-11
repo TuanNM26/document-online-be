@@ -35,7 +35,7 @@ export class ResponseBookmarkDto {
   _id: Types.ObjectId;
 
   @Expose()
-  pageNumber: number;
+  pageId: string;
 
   @Expose()
   note: string;

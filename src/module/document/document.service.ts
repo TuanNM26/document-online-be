@@ -277,7 +277,6 @@ export class DocumentService {
       throw new NotFoundException(MESSAGES.DOCUMENT_NOT_FOUND);
     }
 
-    // --- Bắt đầu xử lý khi có file mới được tải lên ---
     if (file) {
       const fileExt = file.originalname.split('.').pop()?.toLowerCase();
       const allowedTypes = ['pdf', 'txt', 'xlsx'];
@@ -287,16 +286,14 @@ export class DocumentService {
         );
       }
 
-      // --- 1. Xóa tất cả các trang cũ liên quan đến tài liệu này trong Supabase và DB ---
       const pages = await this.pageModel.find({ documentId: document._id });
       for (const page of pages) {
         if (page.filePath) {
           try {
             const pageFileName = page.filePath.split('/').slice(-1)[0];
-            // Supabase path cần khớp với cách bạn upload: documents/{documentId}/pages/{pageFileName}
             const { error: removePageError } = await supabase.storage
               .from('doconline')
-              .remove([`documents/${document._id}/pages/${pageFileName}`]); // Đường dẫn chính xác
+              .remove([`documents/${document._id}/pages/${pageFileName}`]);
             if (removePageError) {
               console.warn(
                 `Cảnh báo: Không thể xóa trang cũ ${pageFileName} khỏi Supabase: ${removePageError.message}`,
@@ -310,17 +307,12 @@ export class DocumentService {
           }
         }
       }
-      // Sau khi xóa khỏi Supabase, xóa khỏi MongoDB
       await this.pageModel.deleteMany({ documentId: document._id });
       console.log(
         `Đã xóa tất cả các trang cũ cho document ID: ${document._id}`,
       );
-
-      // --- 2. Xóa file gốc cũ khỏi Supabase ---
       if (document.filePath) {
         try {
-          // Lấy tên file gốc cũ từ đường dẫn đầy đủ
-          // Ví dụ: documents/document-id-uuid.ext
           const oldFileBucketPath = document.filePath.substring(
             document.filePath.indexOf('documents/'),
           );
@@ -339,16 +331,13 @@ export class DocumentService {
           );
         }
       }
-      console.log(`Đã xóa file gốc cũ cho document ID: ${document._id}`);
-
-      // --- 3. Upload file gốc mới lên Supabase ---
       const originalFileName = `documents/document-${id}-${uuidv4()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
         .from('doconline')
         .upload(originalFileName, file.buffer, {
           contentType: file.mimetype,
           cacheControl: '3600',
-          upsert: false, // Nên là false để tránh ghi đè nếu file đã tồn tại với cùng tên (rất khó xảy ra với uuid)
+          upsert: false,
         });
 
       if (uploadError) {
@@ -368,13 +357,10 @@ export class DocumentService {
         throw new BadRequestException('Không thể lấy URL file gốc mới.');
       }
 
-      // Cập nhật đường dẫn file và loại file cho document
       document.filePath = originalUrlData.publicUrl;
       document.fileType = fileExt;
 
-      const newPages: Partial<Page>[] = []; // Mảng chứa các trang mới
-
-      // --- 4. Xử lý và tạo các trang con tùy theo loại file ---
+      const newPages: Partial<Page>[] = [];
       if (fileExt === 'pdf') {
         const pdfDoc = await PDFDocument.load(file.buffer);
         const totalPages = pdfDoc.getPages().length;
@@ -411,39 +397,32 @@ export class DocumentService {
             fileType: 'pdf',
           });
         }
-        document.totalPages = totalPages; // Cập nhật tổng số trang cho PDF
+        document.totalPages = totalPages;
       } else if (fileExt === 'txt') {
         const text = file.buffer.toString('utf-8').trim();
-        const charsPerPage = 2000; // Có thể điều chỉnh số ký tự mỗi trang cho TXT
+        const charsPerPage = 2000;
         const totalChunks = Math.ceil(text.length / charsPerPage);
-
-        // Điều chỉnh logic tạo trang: mỗi trang TXT sẽ trỏ đến file gốc,
-        // hoặc bạn có thể lưu từng chunk nhỏ nếu muốn server trả về từng chunk.
-        // Dựa trên yêu cầu trước đó, bạn muốn client fetch file gốc và tự phân trang.
-        // Vậy nên, ở đây, chúng ta chỉ cần tạo các page entry trong DB mà tất cả đều trỏ về filePath của document gốc.
-        // Và totalPages sẽ là tổng số chunk (số trang ảo)
         for (let i = 0; i < totalChunks; i++) {
           newPages.push({
             documentId: document._id as Types.ObjectId,
             pageNumber: i + 1,
-            filePath: document.filePath, // Đây là điểm quan trọng: Trỏ về file gốc
+            filePath: document.filePath,
             fileType: 'txt',
           });
         }
-        document.totalPages = totalChunks; // Cập nhật tổng số trang ảo cho TXT
+        document.totalPages = totalChunks;
       } else if (fileExt === 'xlsx') {
         const workbook = XLSX.read(file.buffer, { type: 'buffer' });
         const sheetNames = workbook.SheetNames;
 
         for (let i = 0; i < sheetNames.length; i++) {
           const sheet = workbook.Sheets[sheetNames[i]];
-          // Chuyển đổi sheet thành CSV để lưu trữ và hiển thị
           const csvBuffer = Buffer.from(
             XLSX.utils.sheet_to_csv(sheet),
             'utf-8',
           );
 
-          const pageFileName = `documents/${document._id}/pages/sheet_${i + 1}.csv`; // Lưu dưới dạng CSV
+          const pageFileName = `documents/${document._id}/pages/sheet_${i + 1}.csv`;
           const { error } = await supabase.storage
             .from('doconline')
             .upload(pageFileName, csvBuffer, {
@@ -472,7 +451,6 @@ export class DocumentService {
         document.totalPages = sheetNames.length;
       }
 
-      // --- 5. Lưu các trang mới vào MongoDB ---
       if (newPages.length > 0) {
         await this.pageModel.insertMany(newPages);
       }
