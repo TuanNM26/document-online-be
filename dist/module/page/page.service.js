@@ -81,49 +81,108 @@ let PageService = class PageService {
             throw new common_1.NotFoundException(message_1.MESSAGES.DOCUMENT_NOT_FOUND);
         }
         const fileExt = file.originalname.split('.').pop()?.toLowerCase();
-        if (fileExt !== 'pdf') {
-            throw new common_1.BadRequestException('Chỉ hỗ trợ thêm trang từ file .pdf');
-        }
-        const pdfDoc = await pdf_lib_1.PDFDocument.load(file.buffer);
-        const numNewPages = pdfDoc.getPages().length;
         const existingPages = await this.pageModel
             .find({ documentId: new mongoose_2.Types.ObjectId(documentId) })
             .sort({ pageNumber: 1 });
         const currentPageCount = existingPages.length;
-        const newPages = [];
-        for (let i = 0; i < numNewPages; i++) {
-            const newPageDoc = await pdf_lib_1.PDFDocument.create();
-            const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
-            newPageDoc.addPage(copiedPage);
-            const newPageBytes = await newPageDoc.save();
-            const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}.pdf`;
-            const { error } = await supabase_1.supabase.storage
-                .from('doconline')
-                .upload(pageFileName, Buffer.from(newPageBytes), {
-                contentType: 'application/pdf',
-                cacheControl: '3600',
-                upsert: false,
-            });
-            if (error) {
-                throw new common_1.BadRequestException(`Upload trang mới thất bại: ${error.message}`);
+        let newPages = [];
+        if (fileExt === 'pdf') {
+            const pdfDoc = await pdf_lib_1.PDFDocument.load(file.buffer);
+            const numNewPages = pdfDoc.getPages().length;
+            for (let i = 0; i < numNewPages; i++) {
+                const newPageDoc = await pdf_lib_1.PDFDocument.create();
+                const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
+                newPageDoc.addPage(copiedPage);
+                const newPageBytes = await newPageDoc.save();
+                const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}.pdf`;
+                const { error } = await supabase_1.supabase.storage
+                    .from('doconline')
+                    .upload(pageFileName, Buffer.from(newPageBytes), {
+                    contentType: 'application/pdf',
+                    cacheControl: '3600',
+                    upsert: false,
+                });
+                if (error) {
+                    throw new common_1.BadRequestException(`Upload trang mới thất bại: ${error.message}`);
+                }
+                const { data: urlData } = supabase_1.supabase.storage
+                    .from('doconline')
+                    .getPublicUrl(pageFileName);
+                newPages.push({
+                    documentId: document._id,
+                    pageNumber: currentPageCount + i + 1,
+                    filePath: urlData.publicUrl,
+                    fileType: 'pdf',
+                });
             }
-            const { data: urlData } = supabase_1.supabase.storage
-                .from('doconline')
-                .getPublicUrl(pageFileName);
-            console.log(currentPageCount);
-            newPages.push({
-                documentId: document._id,
-                pageNumber: currentPageCount + i + 1,
-                filePath: urlData.publicUrl,
-                fileType: 'pdf',
-            });
+        }
+        else if (fileExt === 'txt') {
+            const pageSize = 10000;
+            const content = file.buffer.toString('utf-8');
+            const totalPages = Math.ceil(content.length / pageSize);
+            for (let i = 0; i < totalPages; i++) {
+                const pageText = content.slice(i * pageSize, (i + 1) * pageSize);
+                const uniqueId = (0, uuid_1.v4)();
+                const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}_${uniqueId}.txt`;
+                const { error } = await supabase_1.supabase.storage
+                    .from('doconline')
+                    .upload(pageFileName, Buffer.from(pageText, 'utf-8'), {
+                    contentType: 'text/plain',
+                    cacheControl: '3600',
+                    upsert: false,
+                });
+                if (error) {
+                    throw new common_1.BadRequestException(`Upload trang TXT thất bại: ${error.message}`);
+                }
+                const { data: urlData } = supabase_1.supabase.storage
+                    .from('doconline')
+                    .getPublicUrl(pageFileName);
+                newPages.push({
+                    documentId: document._id,
+                    pageNumber: currentPageCount + i + 1,
+                    filePath: urlData.publicUrl,
+                    fileType: 'txt',
+                });
+            }
+        }
+        else if (fileExt === 'xlsx') {
+            const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+            const sheetNames = workbook.SheetNames;
+            for (let i = 0; i < sheetNames.length; i++) {
+                const sheetName = sheetNames[i];
+                const sheet = workbook.Sheets[sheetName];
+                const csv = XLSX.utils.sheet_to_csv(sheet);
+                const uniqueId = (0, uuid_1.v4)();
+                const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}_${uniqueId}.txt`;
+                const { error } = await supabase_1.supabase.storage
+                    .from('doconline')
+                    .upload(pageFileName, Buffer.from(csv, 'utf-8'), {
+                    contentType: 'text/csv',
+                    cacheControl: '3600',
+                    upsert: false,
+                });
+                if (error) {
+                    throw new common_1.BadRequestException(`Upload trang XLSX thất bại: ${error.message}`);
+                }
+                const { data: urlData } = supabase_1.supabase.storage
+                    .from('doconline')
+                    .getPublicUrl(pageFileName);
+                newPages.push({
+                    documentId: document._id,
+                    pageNumber: currentPageCount + i + 1,
+                    filePath: urlData.publicUrl,
+                    fileType: 'xlsx',
+                });
+            }
+        }
+        else {
+            throw new common_1.BadRequestException('Chỉ hỗ trợ thêm trang từ file .pdf, .txt, .xlsx');
         }
         const insertedPages = await this.pageModel.insertMany(newPages);
-        document.totalPages = currentPageCount + numNewPages;
+        document.totalPages = currentPageCount + newPages.length;
         await document.save();
-        return (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, insertedPages.map((p) => p.toObject()), {
-            excludeExtraneousValues: true,
-        });
+        this.documentGateway.notifyPageChange(documentId.toString(), 'added');
+        return (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, insertedPages.map((p) => p.toObject()), { excludeExtraneousValues: true });
     }
     async analyzeFile(file) {
         const mimetype = file.mimetype;
@@ -271,6 +330,7 @@ let PageService = class PageService {
             });
         }
         const inserted = await this.pageModel.insertMany(newPages);
+        this.documentGateway.notifyPageChange(page.documentId.toString(), 'updated');
         return (0, class_transformer_1.plainToInstance)(responsePage_dto_1.ResponsePageDto, inserted.map((p) => p.toObject()), {
             excludeExtraneousValues: true,
         });
@@ -294,6 +354,9 @@ let PageService = class PageService {
         return { message: 'Page deleted and page numbers updated' };
     }
     async findByDocumentId(documentId) {
+        if (!mongoose_2.Types.ObjectId.isValid(documentId)) {
+            throw new common_1.BadRequestException('documentId không hợp lệ');
+        }
         const result = await this.pageModel
             .find({ documentId: new mongoose_2.Types.ObjectId(documentId) })
             .populate({ path: 'documentId', select: 'title field' })
