@@ -84,6 +84,9 @@ let PageService = class PageService {
         const existingPages = await this.pageModel
             .find({ documentId: new mongoose_2.Types.ObjectId(documentId) })
             .sort({ pageNumber: 1 });
+        if (document.fileType !== fileExt) {
+            throw new common_1.BadRequestException(`Tài liệu chỉ hỗ trợ thêm trang với định dạng '${document.fileType}'.`);
+        }
         const currentPageCount = existingPages.length;
         let newPages = [];
         if (fileExt === 'pdf') {

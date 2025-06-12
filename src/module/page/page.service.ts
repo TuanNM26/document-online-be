@@ -47,7 +47,11 @@ export class PageService {
     const existingPages = await this.pageModel
       .find({ documentId: new Types.ObjectId(documentId) })
       .sort({ pageNumber: 1 });
-
+    if (document.fileType !== fileExt) {
+      throw new BadRequestException(
+        `Tài liệu chỉ hỗ trợ thêm trang với định dạng '${document.fileType}'.`,
+      );
+    }
     const currentPageCount = existingPages.length;
     let newPages: Partial<Page>[] = [];
 
@@ -89,7 +93,7 @@ export class PageService {
         });
       }
     } else if (fileExt === 'txt') {
-      const pageSize = 10000; // số ký tự mỗi trang
+      const pageSize = 10000;
       const content = file.buffer.toString('utf-8');
       const totalPages = Math.ceil(content.length / pageSize);
 
