@@ -64,8 +64,8 @@ export class PageService {
         const [copiedPage] = await newPageDoc.copyPages(pdfDoc, [i]);
         newPageDoc.addPage(copiedPage);
         const newPageBytes = await newPageDoc.save();
-
-        const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}.pdf`;
+        const uniqueId = uuidv4();
+        const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}_${uniqueId}.pdf`;
 
         const { error } = await supabase.storage
           .from('doconline')
@@ -137,7 +137,7 @@ export class PageService {
         const csv = XLSX.utils.sheet_to_csv(sheet);
 
         const uniqueId = uuidv4();
-        const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}_${uniqueId}.txt`;
+        const pageFileName = `documents/${document._id}/pages/page_${currentPageCount + i + 1}_${uniqueId}.csv`;
 
         const { error } = await supabase.storage
           .from('doconline')
