@@ -1,4 +1,3 @@
-// app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -8,6 +7,9 @@ import { BookmarkModule } from './module/bookmark/bookmark.module';
 import { UserModule } from './module/user/user.module';
 import { AuthModule } from './common/auth/auth.module';
 import { RoleModule } from './module/role/role.module';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { join } from 'path';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 
 @Module({
   imports: [
@@ -21,6 +23,31 @@ import { RoleModule } from './module/role/role.module';
       }),
       inject: [ConfigService],
     }),
+
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        transport: {
+          service: 'gmail',
+          auth: {
+            user: configService.get<string>('MAIL_USER'),
+            pass: configService.get<string>('MAIL_PASSWORD'),
+          },
+        },
+        defaults: {
+          from: `"Your App Name" <${configService.get<string>('MAIL_USER')}>`,
+        },
+        template: {
+          dir: join(__dirname, 'common', 'template'),
+          adapter: new HandlebarsAdapter(),
+          options: {
+            strict: true,
+          },
+        },
+      }),
+    }),
+
     DocumentModule,
     PageModule,
     RoleModule,

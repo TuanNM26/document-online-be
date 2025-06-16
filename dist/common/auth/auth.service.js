@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -26,13 +59,18 @@ const message_1 = require("../constant/message");
 const config_1 = require("@nestjs/config");
 const class_transformer_1 = require("class-transformer");
 const responseUser_dto_1 = require("../../module/user/dto/responseUser.dto");
+const crypto = __importStar(require("crypto"));
+const mailService_1 = require("../../module/mail/mailService");
+const date_fns_1 = require("date-fns");
 let AuthService = class AuthService {
     userModel;
     jwtService;
+    mailService;
     configService;
-    constructor(userModel, jwtService, configService) {
+    constructor(userModel, jwtService, mailService, configService) {
         this.userModel = userModel;
         this.jwtService = jwtService;
+        this.mailService = mailService;
         this.configService = configService;
     }
     async register(registerDto) {
@@ -43,13 +81,19 @@ let AuthService = class AuthService {
             throw new common_1.ConflictException(message_1.MESSAGES.EMAIL_EXIST);
         }
         const hashedPassword = await bcrypt_1.default.hash(registerDto.password, 10);
+        const verificationKey = crypto.randomBytes(20).toString('hex');
+        const verificationExpires = new Date(Date.now() + 15 * 60 * 1000);
         const createdUser = new this.userModel({
             email: registerDto.email,
             username: registerDto.username,
             password: hashedPassword,
-            role: registerDto.roleId,
+            role: new mongoose_2.Types.ObjectId('684668708bfa41d5dc6b1547'),
+            isActive: false,
+            verificationKey,
+            verificationExpires,
         });
         const savedUser = await createdUser.save();
+        await this.mailService.sendVerificationEmail(savedUser.email, verificationKey);
         return (0, class_transformer_1.plainToInstance)(responseUser_dto_1.UserResponseDto, savedUser.toObject(), {
             excludeExtraneousValues: true,
         });
@@ -60,6 +104,9 @@ let AuthService = class AuthService {
             .populate('role', 'roleName');
         if (!user) {
             throw new common_1.NotFoundException(message_1.MESSAGES.USER_NOT_FOUND);
+        }
+        if (!user.isActive) {
+            throw new common_1.ForbiddenException('Account is not verified. Please check your email.');
         }
         const isPasswordValid = await bcrypt_1.default.compare(dto.password, user.password);
         if (!isPasswordValid) {
@@ -89,15 +136,6 @@ let AuthService = class AuthService {
             refreshToken: refreshToken,
         };
     }
-    async resetPassword(email, newPassword) {
-        const user = await this.userModel.findOne({ email });
-        if (!user) {
-            throw new common_1.NotFoundException(message_1.MESSAGES.USER_NOT_FOUND);
-        }
-        const hashedPassword = await bcrypt_1.default.hash(newPassword, 10);
-        await this.userModel.updateOne({ email }, { password: hashedPassword });
-        return { message: message_1.MESSAGES.RESET_PASSWORD_SUCCESS };
-    }
     async refreshAccessToken(dto) {
         const { refreshToken } = dto;
         const payload = this.jwtService.verify(refreshToken, {
@@ -111,6 +149,49 @@ let AuthService = class AuthService {
             accessToken,
         };
     }
+    async verifyAccount(key) {
+        const user = await this.userModel.findOne({
+            verificationKey: key,
+            verificationExpires: { $gt: new Date() },
+        });
+        if (!user) {
+            throw new common_1.BadRequestException('Mã xác minh không hợp lệ hoặc đã hết hạn');
+        }
+        user.isActive = true;
+        user.verificationKey = undefined;
+        user.verificationExpires = undefined;
+        await user.save();
+        return 'Tài khoản đã được kích hoạt thành công';
+    }
+    async forgotPassword({ email }) {
+        const user = await this.userModel.findOne({ email });
+        if (!user)
+            return;
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiry = (0, date_fns_1.addMinutes)(new Date(), 15);
+        user.resetToken = code;
+        user.resetTokenExpiry = expiry;
+        await user.save();
+        await this.mailService.sendForgotPasswordEmail(user, code);
+    }
+    async resetPassword(dto) {
+        const { email, newPassword, code } = dto;
+        const user = await this.userModel.findOne({ email });
+        if (!user || user.resetToken !== code) {
+            throw new common_1.BadRequestException('Mã xác nhận không đúng');
+        }
+        if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+            throw new common_1.BadRequestException('Mã xác nhận đã hết hạn');
+        }
+        if (user.resetTokenExpiry < new Date()) {
+            throw new common_1.BadRequestException('Mã xác nhận đã hết hạn');
+        }
+        const hashed = await bcrypt_1.default.hash(newPassword, 10);
+        user.password = hashed;
+        user.resetToken = undefined;
+        user.resetTokenExpiry = undefined;
+        await user.save();
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
@@ -118,6 +199,7 @@ exports.AuthService = AuthService = __decorate([
     __param(0, (0, mongoose_1.InjectModel)(user_schema_1.User.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
         jwt_1.JwtService,
+        mailService_1.MailService,
         config_1.ConfigService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

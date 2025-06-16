@@ -7,6 +7,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from '../../module/user/user.schema';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './strategy/jwt.strategy';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { MailModule } from 'src/module/mail/mail.module';
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import { JwtStrategy } from './strategy/jwt.strategy';
       },
     }),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MailModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

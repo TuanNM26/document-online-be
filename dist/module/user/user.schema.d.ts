@@ -5,6 +5,11 @@ export declare class User {
     password: string;
     email?: string;
     role: Role;
+    isActive: boolean;
+    verificationKey?: string;
+    verificationExpires?: Date;
+    resetToken?: string;
+    resetTokenExpiry?: Date;
 }
 export type UserDocument = User & MongooseDocument;
 export declare const UserSchema: mongoose.Schema<User, mongoose.Model<User, any, any, any, mongoose.Document<unknown, any, User, any> & User & {

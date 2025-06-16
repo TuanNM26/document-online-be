@@ -16,6 +16,9 @@ const bookmark_module_1 = require("./module/bookmark/bookmark.module");
 const user_module_1 = require("./module/user/user.module");
 const auth_module_1 = require("./common/auth/auth.module");
 const role_module_1 = require("./module/role/role.module");
+const mailer_1 = require("@nestjs-modules/mailer");
+const path_1 = require("path");
+const handlebars_adapter_1 = require("@nestjs-modules/mailer/dist/adapters/handlebars.adapter");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -30,6 +33,29 @@ exports.AppModule = AppModule = __decorate([
                     autoIndex: true,
                 }),
                 inject: [config_1.ConfigService],
+            }),
+            mailer_1.MailerModule.forRootAsync({
+                imports: [config_1.ConfigModule],
+                inject: [config_1.ConfigService],
+                useFactory: async (configService) => ({
+                    transport: {
+                        service: 'gmail',
+                        auth: {
+                            user: configService.get('MAIL_USER'),
+                            pass: configService.get('MAIL_PASSWORD'),
+                        },
+                    },
+                    defaults: {
+                        from: `"Your App Name" <${configService.get('MAIL_USER')}>`,
+                    },
+                    template: {
+                        dir: (0, path_1.join)(__dirname, 'common', 'template'),
+                        adapter: new handlebars_adapter_1.HandlebarsAdapter(),
+                        options: {
+                            strict: true,
+                        },
+                    },
+                }),
             }),
             document_module_1.DocumentModule,
             page_module_1.PageModule,

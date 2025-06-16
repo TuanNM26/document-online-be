@@ -15,6 +15,21 @@ export class User {
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Role' })
   role: Role;
+
+  @Prop({ default: false })
+  isActive: boolean;
+
+  @Prop()
+  verificationKey?: string;
+
+  @Prop()
+  verificationExpires?: Date;
+
+  @Prop({ nullable: true })
+  resetToken?: string;
+
+  @Prop({ nullable: true })
+  resetTokenExpiry?: Date;
 }
 
 export type UserDocument = User & MongooseDocument;

@@ -16,6 +16,7 @@ const mongoose_1 = require("@nestjs/mongoose");
 const user_schema_1 = require("../../module/user/user.schema");
 const passport_1 = require("@nestjs/passport");
 const jwt_strategy_1 = require("./strategy/jwt.strategy");
+const mail_module_1 = require("../../module/mail/mail.module");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -37,6 +38,7 @@ exports.AuthModule = AuthModule = __decorate([
                 },
             }),
             mongoose_1.MongooseModule.forFeature([{ name: user_schema_1.User.name, schema: user_schema_1.UserSchema }]),
+            mail_module_1.MailModule,
         ],
         providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy],
         controllers: [auth_controller_1.AuthController],

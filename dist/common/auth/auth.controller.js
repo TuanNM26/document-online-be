@@ -19,6 +19,9 @@ const register_dto_1 = require("./dto/register.dto");
 const swagger_1 = require("@nestjs/swagger");
 const login_dto_1 = require("./dto/login.dto");
 const refreshToken_dto_1 = require("./dto/refreshToken.dto");
+const verifyAccount_dto_1 = require("./dto/verifyAccount.dto");
+const forgotPassword_dto_1 = require("./dto/forgotPassword.dto");
+const resetPassword_dto_1 = require("./dto/resetPassword.dto");
 let AuthController = class AuthController {
     authService;
     constructor(authService) {
@@ -32,6 +35,15 @@ let AuthController = class AuthController {
     }
     async refreshToken(dto) {
         return this.authService.refreshAccessToken(dto);
+    }
+    async verify(dto) {
+        return this.authService.verifyAccount(dto.key);
+    }
+    forgotPassword(dto) {
+        return this.authService.forgotPassword(dto);
+    }
+    resetPassword(dto) {
+        return this.authService.resetPassword(dto);
     }
 };
 exports.AuthController = AuthController;
@@ -63,6 +75,37 @@ __decorate([
     __metadata("design:paramtypes", [refreshToken_dto_1.RefreshTokenDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refreshToken", null);
+__decorate([
+    (0, common_1.Post)('verify'),
+    (0, swagger_1.ApiBody)({ type: verifyAccount_dto_1.VerifyAccountDto }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Account verified successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid verification key' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [verifyAccount_dto_1.VerifyAccountDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verify", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    (0, swagger_1.ApiOperation)({ summary: 'Gửi mã xác nhận qua email' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Mã xác nhận đã được gửi nếu email tồn tại.',
+    }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [forgotPassword_dto_1.ForgotPasswordDto]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    (0, swagger_1.ApiOperation)({ summary: 'Đặt lại mật khẩu bằng mã xác nhận' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Đặt lại mật khẩu thành công.' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [resetPassword_dto_1.ResetPasswordDto]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "resetPassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])
