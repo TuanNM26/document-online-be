@@ -44,7 +44,9 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    const verificationKey = crypto.randomBytes(20).toString('hex');
+    const verificationKey = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
     const verificationExpires = new Date(Date.now() + 15 * 60 * 1000);
 
     const createdUser = new this.userModel({

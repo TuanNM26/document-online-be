@@ -36,7 +36,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
           },
         },
         defaults: {
-          from: `"Your App Name" <${configService.get<string>('MAIL_USER')}>`,
+          from: `"Document Online" <${configService.get<string>('MAIL_USER')}>`,
         },
         template: {
           dir: join(__dirname, 'common', 'template'),

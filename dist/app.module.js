@@ -46,7 +46,7 @@ exports.AppModule = AppModule = __decorate([
                         },
                     },
                     defaults: {
-                        from: `"Your App Name" <${configService.get('MAIL_USER')}>`,
+                        from: `"Document Online" <${configService.get('MAIL_USER')}>`,
                     },
                     template: {
                         dir: (0, path_1.join)(__dirname, 'common', 'template'),
