@@ -371,7 +371,7 @@ export class DocumentService {
           singlePageDoc.addPage(copiedPage);
           const pdfBytes = await singlePageDoc.save();
 
-          const pageFileName = `documents/${document._id}/pages/page_${i + 1}.pdf`;
+          const pageFileName = `documents/${document._id}/pages/page_${i + 1}-${uuidv4()}.pdf`;
           const { error } = await supabase.storage
             .from('doconline')
             .upload(pageFileName, Buffer.from(pdfBytes), {
@@ -422,7 +422,7 @@ export class DocumentService {
             'utf-8',
           );
 
-          const pageFileName = `documents/${document._id}/pages/sheet_${i + 1}.csv`;
+          const pageFileName = `documents/${document._id}/pages/sheet_${i + 1}${uuidv4()}.csv`;
           const { error } = await supabase.storage
             .from('doconline')
             .upload(pageFileName, csvBuffer, {
@@ -461,11 +461,12 @@ export class DocumentService {
     }
 
     const saved = await document.save();
-
+    this.documentGateway.notifyDocumentChange(document.id.toString(), saved);
     return plainToInstance(ResponseDocumentDto, saved.toObject(), {
       excludeExtraneousValues: true,
     });
   }
+
   async delete(id: string): Promise<void> {
     const result = await this.documentModel.findByIdAndDelete(id);
     if (!result) {

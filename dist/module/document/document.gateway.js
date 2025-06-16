@@ -25,6 +25,9 @@ let DocumentGateway = class DocumentGateway {
     notifyPageChange(documentId, changeType) {
         this.server.to(documentId).emit('page-change', { documentId, changeType });
     }
+    notifyDocumentChange(documentId, updatedDocument) {
+        this.server.to(documentId).emit('document-change', updatedDocument);
+    }
 };
 exports.DocumentGateway = DocumentGateway;
 __decorate([

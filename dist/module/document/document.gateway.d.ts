@@ -3,4 +3,5 @@ export declare class DocumentGateway {
     server: Server;
     handleJoinDocument(documentId: string, client: Socket): void;
     notifyPageChange(documentId: string, changeType: string): void;
+    notifyDocumentChange(documentId: string, updatedDocument: any): void;
 }

@@ -318,7 +318,7 @@ let DocumentService = class DocumentService {
                     const [copiedPage] = await singlePageDoc.copyPages(pdfDoc, [i]);
                     singlePageDoc.addPage(copiedPage);
                     const pdfBytes = await singlePageDoc.save();
-                    const pageFileName = `documents/${document._id}/pages/page_${i + 1}.pdf`;
+                    const pageFileName = `documents/${document._id}/pages/page_${i + 1}-${(0, uuid_1.v4)()}.pdf`;
                     const { error } = await supabase_1.supabase.storage
                         .from('doconline')
                         .upload(pageFileName, Buffer.from(pdfBytes), {
@@ -361,7 +361,7 @@ let DocumentService = class DocumentService {
                 for (let i = 0; i < sheetNames.length; i++) {
                     const sheet = workbook.Sheets[sheetNames[i]];
                     const csvBuffer = Buffer.from(XLSX.utils.sheet_to_csv(sheet), 'utf-8');
-                    const pageFileName = `documents/${document._id}/pages/sheet_${i + 1}.csv`;
+                    const pageFileName = `documents/${document._id}/pages/sheet_${i + 1}${(0, uuid_1.v4)()}.csv`;
                     const { error } = await supabase_1.supabase.storage
                         .from('doconline')
                         .upload(pageFileName, csvBuffer, {
@@ -393,6 +393,7 @@ let DocumentService = class DocumentService {
             document.userId = new mongoose_2.Types.ObjectId(userId);
         }
         const saved = await document.save();
+        this.documentGateway.notifyDocumentChange(document.id.toString(), saved);
         return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, saved.toObject(), {
             excludeExtraneousValues: true,
         });

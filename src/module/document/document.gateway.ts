@@ -29,4 +29,7 @@ export class DocumentGateway {
   notifyPageChange(documentId: string, changeType: string) {
     this.server.to(documentId).emit('page-change', { documentId, changeType });
   }
+  notifyDocumentChange(documentId: string, updatedDocument: any) {
+    this.server.to(documentId).emit('document-change', updatedDocument);
+  }
 }
