@@ -144,7 +144,7 @@ let AuthService = class AuthService {
         const { email, newPassword, code } = dto;
         const user = await this.userModel.findOne({ email });
         if (!user || user.resetToken !== code) {
-            throw new common_1.BadRequestException('Mã xác nhận không đúng');
+            throw new common_1.BadRequestException('Mã xác nhận không đúng hoặc email chưa chính xác');
         }
         if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
             throw new common_1.BadRequestException('Mã xác nhận đã hết hạn');

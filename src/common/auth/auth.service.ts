@@ -170,7 +170,9 @@ export class AuthService {
 
     const user = await this.userModel.findOne({ email });
     if (!user || user.resetToken !== code) {
-      throw new BadRequestException('Mã xác nhận không đúng');
+      throw new BadRequestException(
+        'Mã xác nhận không đúng hoặc email chưa chính xác',
+      );
     }
 
     if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
