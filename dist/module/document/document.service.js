@@ -208,6 +208,7 @@ let DocumentService = class DocumentService {
             await this.pageModel.insertMany(pageEntities);
         }
         await newDoc.populate('userId', 'username');
+        await this.documentGateway.notifyHomeDocumentUpdate('created', newDoc);
         return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, newDoc.toObject(), {
             excludeExtraneousValues: true,
         });
@@ -394,6 +395,7 @@ let DocumentService = class DocumentService {
         }
         const saved = await document.save();
         this.documentGateway.notifyDocumentChange(document.id.toString(), saved);
+        this.documentGateway.notifyHomeDocumentUpdate('updated', saved);
         return (0, class_transformer_1.plainToInstance)(responseDocument_dto_1.ResponseDocumentDto, saved.toObject(), {
             excludeExtraneousValues: true,
         });
@@ -404,6 +406,7 @@ let DocumentService = class DocumentService {
             throw new common_1.NotFoundException(`Document with id ${id} not found`);
         }
         await this.pageModel.deleteMany({ documentId: result._id });
+        await this.documentGateway.notifyHomeDocumentUpdate('deleted', result);
     }
     async analyzeFile(file) {
         const mimetype = file.mimetype;

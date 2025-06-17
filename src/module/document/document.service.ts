@@ -211,7 +211,7 @@ export class DocumentService {
     }
 
     await newDoc.populate('userId', 'username');
-
+    await this.documentGateway.notifyHomeDocumentUpdate('created', newDoc);
     return plainToInstance(ResponseDocumentDto, newDoc.toObject(), {
       excludeExtraneousValues: true,
     });
@@ -462,6 +462,7 @@ export class DocumentService {
 
     const saved = await document.save();
     this.documentGateway.notifyDocumentChange(document.id.toString(), saved);
+    this.documentGateway.notifyHomeDocumentUpdate('updated', saved);
     return plainToInstance(ResponseDocumentDto, saved.toObject(), {
       excludeExtraneousValues: true,
     });
@@ -473,6 +474,7 @@ export class DocumentService {
       throw new NotFoundException(`Document with id ${id} not found`);
     }
     await this.pageModel.deleteMany({ documentId: result._id });
+    await this.documentGateway.notifyHomeDocumentUpdate('deleted', result);
   }
 
   async analyzeFile(file: Express.Multer.File): Promise<number> {

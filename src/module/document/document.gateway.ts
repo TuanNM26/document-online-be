@@ -32,4 +32,11 @@ export class DocumentGateway {
   notifyDocumentChange(documentId: string, updatedDocument: any) {
     this.server.to(documentId).emit('document-change', updatedDocument);
   }
+
+  notifyHomeDocumentUpdate(
+    eventType: 'created' | 'updated' | 'deleted',
+    document: any,
+  ) {
+    this.server.emit('home-document-change', { eventType, document });
+  }
 }

@@ -19,6 +19,8 @@ const role_module_1 = require("./module/role/role.module");
 const mailer_1 = require("@nestjs-modules/mailer");
 const path_1 = require("path");
 const handlebars_adapter_1 = require("@nestjs-modules/mailer/dist/adapters/handlebars.adapter");
+const schedule_1 = require("@nestjs/schedule");
+const job_module_1 = require("./module/cronJob/job.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -34,6 +36,7 @@ exports.AppModule = AppModule = __decorate([
                 }),
                 inject: [config_1.ConfigService],
             }),
+            schedule_1.ScheduleModule.forRoot(),
             mailer_1.MailerModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
@@ -62,6 +65,7 @@ exports.AppModule = AppModule = __decorate([
             role_module_1.RoleModule,
             bookmark_module_1.BookmarkModule,
             user_module_1.UserModule,
+            job_module_1.JobModule,
             auth_module_1.AuthModule,
         ],
     })

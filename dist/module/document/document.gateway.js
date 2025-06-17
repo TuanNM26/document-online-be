@@ -28,6 +28,9 @@ let DocumentGateway = class DocumentGateway {
     notifyDocumentChange(documentId, updatedDocument) {
         this.server.to(documentId).emit('document-change', updatedDocument);
     }
+    notifyHomeDocumentUpdate(eventType, document) {
+        this.server.emit('home-document-change', { eventType, document });
+    }
 };
 exports.DocumentGateway = DocumentGateway;
 __decorate([

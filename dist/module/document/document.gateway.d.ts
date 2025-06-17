@@ -4,4 +4,5 @@ export declare class DocumentGateway {
     handleJoinDocument(documentId: string, client: Socket): void;
     notifyPageChange(documentId: string, changeType: string): void;
     notifyDocumentChange(documentId: string, updatedDocument: any): void;
+    notifyHomeDocumentUpdate(eventType: 'created' | 'updated' | 'deleted', document: any): void;
 }

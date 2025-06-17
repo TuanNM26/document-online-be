@@ -10,6 +10,8 @@ import { RoleModule } from './module/role/role.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { join } from 'path';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { JobModule } from './module/cronJob/job.module';
 
 @Module({
   imports: [
@@ -24,6 +26,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
       inject: [ConfigService],
     }),
 
+    ScheduleModule.forRoot(),
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -53,6 +56,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
     RoleModule,
     BookmarkModule,
     UserModule,
+    JobModule,
     AuthModule,
   ],
 })
