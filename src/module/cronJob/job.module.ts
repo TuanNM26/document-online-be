@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DeleteUnverifiedUsersTask } from './delete-unverified-users.task';
+import { DeleteUnverifiedUsersTask } from './deleteUnverifiedUsers';
 import { UserModule } from '../user/user.module';
 
 @Module({

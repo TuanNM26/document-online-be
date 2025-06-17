@@ -8,7 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JobModule = void 0;
 const common_1 = require("@nestjs/common");
-const delete_unverified_users_task_1 = require("./delete-unverified-users.task");
+const deleteUnverifiedUsers_1 = require("./deleteUnverifiedUsers");
 const user_module_1 = require("../user/user.module");
 let JobModule = class JobModule {
 };
@@ -16,8 +16,8 @@ exports.JobModule = JobModule;
 exports.JobModule = JobModule = __decorate([
     (0, common_1.Module)({
         imports: [user_module_1.UserModule],
-        providers: [delete_unverified_users_task_1.DeleteUnverifiedUsersTask],
-        exports: [delete_unverified_users_task_1.DeleteUnverifiedUsersTask],
+        providers: [deleteUnverifiedUsers_1.DeleteUnverifiedUsersTask],
+        exports: [deleteUnverifiedUsers_1.DeleteUnverifiedUsersTask],
     })
 ], JobModule);
 //# sourceMappingURL=job.module.js.map
