@@ -26,12 +26,10 @@ let DeleteUnverifiedUsersTask = DeleteUnverifiedUsersTask_1 = class DeleteUnveri
         this.userModel = userModel;
     }
     async handleCron() {
-        console.log('da vao');
         const expiredUsers = await this.userModel.find({
             isActive: false,
             verificationExpires: { $lt: new Date() },
         });
-        console.log('co user', expiredUsers);
         if (expiredUsers.length > 0) {
             const idsToDelete = expiredUsers.map((user) => user._id);
             await this.userModel.deleteMany({ _id: { $in: idsToDelete } });
@@ -40,7 +38,7 @@ let DeleteUnverifiedUsersTask = DeleteUnverifiedUsersTask_1 = class DeleteUnveri
 };
 exports.DeleteUnverifiedUsersTask = DeleteUnverifiedUsersTask;
 __decorate([
-    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_5_MINUTES),
+    (0, schedule_1.Cron)('0 8 * * *'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

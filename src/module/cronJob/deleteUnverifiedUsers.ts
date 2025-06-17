@@ -10,14 +10,13 @@ export class DeleteUnverifiedUsersTask {
 
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  // @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron('0 8 * * *')
   async handleCron() {
-    console.log('da vao');
     const expiredUsers = await this.userModel.find({
       isActive: false,
       verificationExpires: { $lt: new Date() },
     });
-    console.log('co user', expiredUsers);
     if (expiredUsers.length > 0) {
       const idsToDelete = expiredUsers.map((user) => user._id);
       await this.userModel.deleteMany({ _id: { $in: idsToDelete } });
